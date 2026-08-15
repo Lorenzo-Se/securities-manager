@@ -1,3 +1,5 @@
+import { getAccessToken } from "./access-token";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
@@ -40,12 +42,24 @@ export const customInstance = async <T>(
   url: string,
   { method, params, body, headers, signal }: RequestConfig,
 ): Promise<T> => {
+  const token = getAccessToken();
+  const requestHeaders: Record<string, string> = {
+    Accept: "application/json",
+  };
+
+  if (token !== null) {
+    requestHeaders.Authorization = `Bearer ${token}`;
+  }
+
+  if (body !== undefined) {
+    requestHeaders["Content-Type"] = "application/json";
+  }
+
   const response = await fetch(buildUrl(url, params), {
     method: method ?? "GET",
     headers: {
-      Accept: "application/json",
-      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-      ...headers,
+      ...requestHeaders,
+      ...(headers as Record<string, string> | undefined),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
     signal,
