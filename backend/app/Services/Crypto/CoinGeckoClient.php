@@ -62,7 +62,7 @@ class CoinGeckoClient
             return [];
         }
 
-        $vsCurrency = $vsCurrency ?? config('crypto.coingecko.default_currency');
+        $vsCurrency = strtolower($vsCurrency ?? config('crypto.coingecko.default_currency'));
         $cacheKey = 'coingecko.prices.'.md5(implode(',', $ids).'.'.$vsCurrency);
         $ttl = config('crypto.coingecko.cache.prices_ttl');
 

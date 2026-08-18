@@ -88,14 +88,56 @@ it('returns crypto prices for given ids', function () {
 
     $this->mock(CoinGeckoClient::class, function ($mock) {
         $mock->shouldReceive('getPrices')
-            ->with(['bitcoin'])
+            ->with(['bitcoin'], 'eur')
             ->andReturn(['bitcoin' => ['eur' => 45000.12]]);
     });
 
     $this->withToken('valid-token')
         ->getJson('/api/crypto/prices?ids=bitcoin')
         ->assertOk()
-        ->assertJson(['bitcoin' => ['eur' => 45000.12]]);
+        ->assertJson([
+            'currency' => 'eur',
+            'prices' => ['bitcoin' => 45000.12],
+        ]);
+});
+
+it('returns crypto prices in configured currency', function () {
+    config(['crypto.coingecko.default_currency' => 'chf']);
+
+    $user = User::factory()->create([
+        'keycloak_id' => 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+    ]);
+
+    $claims = [
+        'sub' => $user->keycloak_id,
+        'email' => $user->email,
+        'name' => $user->name,
+        'iss' => config('keycloak.issuer'),
+        'aud' => 'account',
+        'azp' => config('keycloak.client_id'),
+    ];
+
+    $this->mock(JwtValidator::class, function ($mock) use ($claims) {
+        $mock->shouldReceive('validate')->andReturn($claims);
+    });
+
+    $this->mock(UserProvisioner::class, function ($mock) use ($claims, $user) {
+        $mock->shouldReceive('provision')->with($claims)->andReturn($user);
+    });
+
+    $this->mock(CoinGeckoClient::class, function ($mock) {
+        $mock->shouldReceive('getPrices')
+            ->with(['bitcoin'], 'chf')
+            ->andReturn(['bitcoin' => ['chf' => 42000.50]]);
+    });
+
+    $this->withToken('valid-token')
+        ->getJson('/api/crypto/prices?ids=bitcoin')
+        ->assertOk()
+        ->assertJson([
+            'currency' => 'chf',
+            'prices' => ['bitcoin' => 42000.50],
+        ]);
 });
 
 it('validates crypto prices ids parameter', function () {

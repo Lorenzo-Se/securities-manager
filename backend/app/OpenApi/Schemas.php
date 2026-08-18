@@ -6,13 +6,26 @@ use OpenApi\Attributes as OA;
 
 #[OA\Schema(
     schema: 'Portfolio',
-    required: ['id', 'name', 'crypto_id', 'crypto_symbol', 'crypto_name', 'created_at', 'updated_at'],
+    required: ['id', 'name', 'crypto_id', 'crypto_symbol', 'crypto_name', 'balance', 'created_at', 'updated_at'],
     properties: [
         new OA\Property(property: 'id', type: 'integer', example: 1),
         new OA\Property(property: 'name', type: 'string', example: 'Mein BTC'),
         new OA\Property(property: 'crypto_id', type: 'string', example: 'bitcoin'),
         new OA\Property(property: 'crypto_symbol', type: 'string', example: 'btc'),
         new OA\Property(property: 'crypto_name', type: 'string', example: 'Bitcoin'),
+        new OA\Property(property: 'balance', type: 'string', example: '1.25000000'),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+    ],
+)]
+#[OA\Schema(
+    schema: 'PortfolioMovement',
+    required: ['id', 'type', 'amount', 'date', 'created_at', 'updated_at'],
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', example: 1),
+        new OA\Property(property: 'type', type: 'string', enum: ['deposit', 'withdrawal'], example: 'deposit'),
+        new OA\Property(property: 'amount', type: 'string', example: '0.50000000'),
+        new OA\Property(property: 'date', type: 'string', format: 'date', example: '2026-08-15'),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
     ],
@@ -26,6 +39,19 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'name', type: 'string', example: 'Bitcoin'),
         new OA\Property(property: 'image', type: 'string', format: 'uri', example: 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png'),
         new OA\Property(property: 'market_cap_rank', type: 'integer', nullable: true, example: 1),
+    ],
+)]
+#[OA\Schema(
+    schema: 'CryptoPrices',
+    required: ['currency', 'prices'],
+    properties: [
+        new OA\Property(property: 'currency', type: 'string', example: 'chf'),
+        new OA\Property(
+            property: 'prices',
+            type: 'object',
+            additionalProperties: new OA\AdditionalProperties(type: 'number', format: 'float'),
+            example: ['bitcoin' => 45000.12],
+        ),
     ],
 )]
 class Schemas

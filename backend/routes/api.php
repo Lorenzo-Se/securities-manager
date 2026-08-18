@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\PortfolioMovementController;
 use App\Http\Controllers\Api\CryptoController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\PortfolioController;
@@ -14,5 +15,9 @@ Route::middleware('auth.keycloak')->group(function () {
     Route::get('/crypto/prices', [CryptoController::class, 'prices']);
     Route::get('/portfolios', [PortfolioController::class, 'index']);
     Route::post('/portfolios', [PortfolioController::class, 'store']);
+    Route::get('/portfolios/{portfolio}', [PortfolioController::class, 'show']);
     Route::delete('/portfolios/{portfolio}', [PortfolioController::class, 'destroy']);
+    Route::get('/portfolios/{portfolio}/movements', [PortfolioMovementController::class, 'index']);
+    Route::post('/portfolios/{portfolio}/movements', [PortfolioMovementController::class, 'store']);
+    Route::delete('/portfolios/{portfolio}/movements/{movement}', [PortfolioMovementController::class, 'destroy']);
 });

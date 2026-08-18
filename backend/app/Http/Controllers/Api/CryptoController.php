@@ -72,16 +72,8 @@ class CryptoController extends Controller
         responses: [
             new OA\Response(
                 response: 200,
-                description: 'Preise in EUR',
-                content: new OA\JsonContent(
-                    type: 'object',
-                    additionalProperties: new OA\AdditionalProperties(
-                        properties: [
-                            new OA\Property(property: 'eur', type: 'number', format: 'float', example: 45000.12),
-                        ],
-                        type: 'object',
-                    ),
-                ),
+                description: 'Preise in der konfigurierten Währung',
+                content: new OA\JsonContent(ref: '#/components/schemas/CryptoPrices'),
             ),
             new OA\Response(response: 401, description: 'Nicht authentifiziert'),
             new OA\Response(response: 422, description: 'Validierungsfehler'),
@@ -101,7 +93,20 @@ class CryptoController extends Controller
         }
 
         $idList = array_values(array_filter(array_map('trim', explode(',', $ids))));
+        $currency = strtolower((string) config('crypto.coingecko.default_currency'));
+        $rawPrices = $coinGecko->getPrices($idList, $currency);
 
-        return response()->json($coinGecko->getPrices($idList));
+        $prices = [];
+
+        foreach ($idList as $id) {
+            $prices[$id] = isset($rawPrices[$id][$currency])
+                ? (float) $rawPrices[$id][$currency]
+                : null;
+        }
+
+        return response()->json([
+            'currency' => $currency,
+            'prices' => $prices,
+        ]);
     }
 }

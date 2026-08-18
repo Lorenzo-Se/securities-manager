@@ -33,10 +33,46 @@ class PortfolioController extends Controller
     {
         $portfolios = $request->user()
             ->portfolios()
+            ->with('movements')
             ->latest()
             ->get();
 
         return response()->json($portfolios->map(fn (Portfolio $portfolio) => $this->formatPortfolio($portfolio)));
+    }
+
+    #[OA\Get(
+        path: '/portfolios/{portfolio}',
+        operationId: 'getPortfolio',
+        summary: 'Einzelnes Portfolio abrufen',
+        tags: ['Portfolio'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(
+                name: 'portfolio',
+                in: 'path',
+                required: true,
+                schema: new OA\Schema(type: 'integer'),
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Portfolio',
+                content: new OA\JsonContent(ref: '#/components/schemas/Portfolio'),
+            ),
+            new OA\Response(response: 401, description: 'Nicht authentifiziert'),
+            new OA\Response(response: 404, description: 'Portfolio nicht gefunden'),
+        ],
+    )]
+    public function show(Request $request, Portfolio $portfolio): JsonResponse
+    {
+        if ($portfolio->user_id !== $request->user()->id) {
+            abort(404);
+        }
+
+        $portfolio->load('movements');
+
+        return response()->json($this->formatPortfolio($portfolio));
     }
 
     #[OA\Post(
@@ -121,6 +157,7 @@ class PortfolioController extends Controller
             'crypto_id' => $portfolio->crypto_id,
             'crypto_symbol' => $portfolio->crypto_symbol,
             'crypto_name' => $portfolio->crypto_name,
+            'balance' => $portfolio->balance,
             'created_at' => $portfolio->created_at?->toIso8601String(),
             'updated_at' => $portfolio->updated_at?->toIso8601String(),
         ];

@@ -75,21 +75,11 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Preise in EUR",
+                        "description": "Preise in der konfigurierten Währung",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "properties": {
-                                            "eur": {
-                                                "type": "number",
-                                                "format": "float",
-                                                "example": 45000.12
-                                            }
-                                        },
-                                        "type": "object"
-                                    }
+                                    "$ref": "#/components/schemas/CryptoPrices"
                                 }
                             }
                         }
@@ -232,6 +222,46 @@
             }
         },
         "/portfolios/{portfolio}": {
+            "get": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Einzelnes Portfolio abrufen",
+                "operationId": "getPortfolio",
+                "parameters": [
+                    {
+                        "name": "portfolio",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Portfolio",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Portfolio"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "404": {
+                        "description": "Portfolio nicht gefunden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
             "delete": {
                 "tags": [
                     "Portfolio"
@@ -257,6 +287,171 @@
                     },
                     "404": {
                         "description": "Portfolio nicht gefunden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/portfolios/{portfolio}/movements": {
+            "get": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Buchungen eines Portfolios abrufen",
+                "operationId": "listPortfolioMovements",
+                "parameters": [
+                    {
+                        "name": "portfolio",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste der Buchungen",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PortfolioMovement"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "404": {
+                        "description": "Portfolio nicht gefunden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Neue Buchung anlegen",
+                "operationId": "createPortfolioMovement",
+                "parameters": [
+                    {
+                        "name": "portfolio",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "type",
+                                    "amount",
+                                    "date"
+                                ],
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                        "example": "deposit",
+                                        "enum": [
+                                            "deposit",
+                                            "withdrawal"
+                                        ]
+                                    },
+                                    "amount": {
+                                        "type": "string",
+                                        "example": "0.5"
+                                    },
+                                    "date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-08-15"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Buchung erstellt",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PortfolioMovement"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "404": {
+                        "description": "Portfolio nicht gefunden"
+                    },
+                    "422": {
+                        "description": "Validierungsfehler"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/portfolios/{portfolio}/movements/{movement}": {
+            "delete": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Buchung löschen",
+                "operationId": "deletePortfolioMovement",
+                "parameters": [
+                    {
+                        "name": "portfolio",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "movement",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Buchung gelöscht"
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "404": {
+                        "description": "Portfolio oder Buchung nicht gefunden"
                     }
                 },
                 "security": [
@@ -332,6 +527,7 @@
                     "crypto_id",
                     "crypto_symbol",
                     "crypto_name",
+                    "balance",
                     "created_at",
                     "updated_at"
                 ],
@@ -355,6 +551,52 @@
                     "crypto_name": {
                         "type": "string",
                         "example": "Bitcoin"
+                    },
+                    "balance": {
+                        "type": "string",
+                        "example": "1.25000000"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "PortfolioMovement": {
+                "required": [
+                    "id",
+                    "type",
+                    "amount",
+                    "date",
+                    "created_at",
+                    "updated_at"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "type": {
+                        "type": "string",
+                        "example": "deposit",
+                        "enum": [
+                            "deposit",
+                            "withdrawal"
+                        ]
+                    },
+                    "amount": {
+                        "type": "string",
+                        "example": "0.50000000"
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-08-15"
                     },
                     "created_at": {
                         "type": "string",
@@ -396,6 +638,29 @@
                         "type": "integer",
                         "example": 1,
                         "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "CryptoPrices": {
+                "required": [
+                    "currency",
+                    "prices"
+                ],
+                "properties": {
+                    "currency": {
+                        "type": "string",
+                        "example": "chf"
+                    },
+                    "prices": {
+                        "type": "object",
+                        "example": {
+                            "bitcoin": 45000.12
+                        },
+                        "additionalProperties": {
+                            "type": "number",
+                            "format": "float"
+                        }
                     }
                 },
                 "type": "object"
