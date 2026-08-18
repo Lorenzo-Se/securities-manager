@@ -12,6 +12,7 @@ export * from './createPortfolioMovementBodyType';
 export * from './cryptoCoin';
 export * from './cryptoPrices';
 export * from './cryptoPricesPrices';
+export * from './cryptoPricesReferencePrices';
 export * from './getAuthenticatedUser200';
 export * from './getCryptoPricesParams';
 export * from './getHealth200';

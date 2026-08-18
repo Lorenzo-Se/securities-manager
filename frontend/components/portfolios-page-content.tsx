@@ -46,20 +46,22 @@ import { useGetAuthenticatedUser } from "@/lib/api/generated/user/user";
 import type { Portfolio } from "@/lib/api/generated/models";
 import { useApiEnabled } from "@/hooks/use-api-enabled";
 import { createPriceFormatter } from "@/lib/format-price";
-
-const amountFormatter = new Intl.NumberFormat("de-DE", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 8,
-});
+import {
+  calculatePortfolioPerformance,
+  formatProfitPercent,
+  getProfitToneClass,
+} from "@/lib/portfolio-performance";
 
 function PortfolioCard({
   portfolio,
-  price,
+  priceUser,
+  priceUsd,
   isPriceLoading,
   formatPrice,
 }: {
   portfolio: Portfolio;
-  price?: number;
+  priceUser?: number;
+  priceUsd?: number;
   isPriceLoading: boolean;
   formatPrice: (value: number) => string;
 }) {
@@ -78,6 +80,16 @@ function PortfolioCard({
         setIsDeleting(false);
       },
     },
+  });
+
+  const performance = calculatePortfolioPerformance({
+    balance: Number(portfolio.balance),
+    costBasisUsd:
+      portfolio.cost_basis_usd !== null
+        ? Number(portfolio.cost_basis_usd)
+        : null,
+    priceUser,
+    priceUsd,
   });
 
   return (
@@ -130,25 +142,37 @@ function PortfolioCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <p className="text-sm text-muted-foreground">Bestand</p>
-          <p className="text-2xl font-semibold tracking-tight">
-            {amountFormatter.format(Number(portfolio.balance))}{" "}
-            <span className="text-base font-medium uppercase text-muted-foreground">
-              {portfolio.crypto_symbol}
-            </span>
-          </p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Aktueller Preis</p>
+          <p className="text-sm text-muted-foreground">Portfoliowert</p>
           <p className="text-2xl font-semibold tracking-tight">
             {isPriceLoading ? (
               <Spinner className="size-5" />
-            ) : price !== undefined ? (
-              formatPrice(price)
+            ) : performance !== null ? (
+              formatPrice(performance.portfolioValue)
             ) : (
               "—"
             )}
           </p>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">Erfolg</p>
+          {isPriceLoading ? (
+            <Spinner className="size-5" />
+          ) : performance !== null ? (
+            <div className="space-y-1">
+              <p
+                className={`text-2xl font-semibold tracking-tight ${getProfitToneClass(performance.profitAmount)}`}
+              >
+                {formatProfitPercent(performance.profitPercent)}
+              </p>
+              <p
+                className={`text-sm font-medium ${getProfitToneClass(performance.profitAmount)}`}
+              >
+                {formatPrice(performance.profitAmount)}
+              </p>
+            </div>
+          ) : (
+            <p className="text-2xl font-semibold tracking-tight">—</p>
+          )}
         </div>
         <Link
           href={`/portfolios/${portfolio.id}`}
@@ -277,7 +301,8 @@ export function PortfoliosPageContent() {
               <PortfolioCard
                 key={portfolio.id}
                 portfolio={portfolio}
-                price={pricesData?.prices[portfolio.crypto_id]}
+                priceUser={pricesData?.prices[portfolio.crypto_id]}
+                priceUsd={pricesData?.reference_prices[portfolio.crypto_id]}
                 isPriceLoading={isPricesLoading}
                 formatPrice={formatPrice}
               />

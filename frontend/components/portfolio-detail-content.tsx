@@ -57,6 +57,11 @@ import { useGetAuthenticatedUser } from "@/lib/api/generated/user/user";
 import type { PortfolioMovement } from "@/lib/api/generated/models";
 import { useApiEnabled } from "@/hooks/use-api-enabled";
 import { createPriceFormatter } from "@/lib/format-price";
+import {
+  calculatePortfolioPerformance,
+  formatProfitPercent,
+  getProfitToneClass,
+} from "@/lib/portfolio-performance";
 
 const amountFormatter = new Intl.NumberFormat("de-DE", {
   minimumFractionDigits: 2,
@@ -222,20 +227,31 @@ export function PortfolioDetailContent({
   const pricesData =
     pricesResponse?.status === 200 ? pricesResponse.data : undefined;
 
-  const price = pricesData?.prices[portfolio?.crypto_id ?? ""];
+  const priceUser = pricesData?.prices[portfolio?.crypto_id ?? ""];
+  const priceUsd = pricesData?.reference_prices[portfolio?.crypto_id ?? ""];
 
   const formatPrice = useMemo(
     () => createPriceFormatter(userCurrency).format,
     [userCurrency],
   );
 
-  const portfolioValue = useMemo(() => {
-    if (!portfolio || price === undefined) {
-      return undefined;
+  const performance = useMemo(() => {
+    if (!portfolio) {
+      return null;
     }
 
-    return Number(portfolio.balance) * price;
-  }, [portfolio, price]);
+    return calculatePortfolioPerformance({
+      balance: Number(portfolio.balance),
+      costBasisUsd:
+        portfolio.cost_basis_usd !== null
+          ? Number(portfolio.cost_basis_usd)
+          : null,
+      priceUser,
+      priceUsd,
+    });
+  }, [portfolio, priceUser, priceUsd]);
+
+  const portfolioValue = performance?.portfolioValue;
 
   const isLoading = isLoadingPortfolio || isLoadingMovements;
 
@@ -303,7 +319,7 @@ export function PortfolioDetailContent({
               </Button>
             </div>
 
-            <div className="mb-8 grid gap-4 md:grid-cols-3">
+            <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader>
                   <CardDescription>Bestand</CardDescription>
@@ -321,8 +337,8 @@ export function PortfolioDetailContent({
                   <CardTitle className="text-2xl">
                     {isPricesLoading ? (
                       <Spinner className="size-5" />
-                    ) : price !== undefined ? (
-                      formatPrice(price)
+                    ) : priceUser !== undefined ? (
+                      formatPrice(priceUser)
                     ) : (
                       "—"
                     )}
@@ -337,6 +353,29 @@ export function PortfolioDetailContent({
                       <Spinner className="size-5" />
                     ) : portfolioValue !== undefined ? (
                       formatPrice(portfolioValue)
+                    ) : (
+                      "—"
+                    )}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardDescription>Erfolg</CardDescription>
+                  <CardTitle className="text-2xl">
+                    {isPricesLoading ? (
+                      <Spinner className="size-5" />
+                    ) : performance !== null ? (
+                      <div className="space-y-1">
+                        <p className={getProfitToneClass(performance.profitAmount)}>
+                          {formatProfitPercent(performance.profitPercent)}
+                        </p>
+                        <p
+                          className={`text-base font-medium ${getProfitToneClass(performance.profitAmount)}`}
+                        >
+                          {formatPrice(performance.profitAmount)}
+                        </p>
+                      </div>
                     ) : (
                       "—"
                     )}

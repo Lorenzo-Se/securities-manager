@@ -6,8 +6,11 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { CryptoPricesPrices } from './cryptoPricesPrices';
+import type { CryptoPricesReferencePrices } from './cryptoPricesReferencePrices';
 
 export interface CryptoPrices {
   currency: string;
   prices: CryptoPricesPrices;
+  reference_currency: string;
+  reference_prices: CryptoPricesReferencePrices;
 }

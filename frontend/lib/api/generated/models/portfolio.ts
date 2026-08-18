@@ -13,6 +13,8 @@ export interface Portfolio {
   crypto_symbol: string;
   crypto_name: string;
   balance: string;
+  /** @nullable */
+  cost_basis_usd: string | null;
   created_at: string;
   updated_at: string;
 }
