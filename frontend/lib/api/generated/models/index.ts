@@ -19,3 +19,5 @@ export * from './listCryptoCoinsParams';
 export * from './portfolio';
 export * from './portfolioMovement';
 export * from './portfolioMovementType';
+export * from './updateAuthenticatedUser200';
+export * from './updateAuthenticatedUserBody';

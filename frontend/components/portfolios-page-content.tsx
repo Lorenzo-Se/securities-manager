@@ -42,6 +42,7 @@ import {
   useDeletePortfolio,
   useListPortfolios,
 } from "@/lib/api/generated/portfolio/portfolio";
+import { useGetAuthenticatedUser } from "@/lib/api/generated/user/user";
 import type { Portfolio } from "@/lib/api/generated/models";
 import { useApiEnabled } from "@/hooks/use-api-enabled";
 import { createPriceFormatter } from "@/lib/format-price";
@@ -175,6 +176,15 @@ export function PortfoliosPageContent() {
     },
   });
 
+  const { data: userResponse } = useGetAuthenticatedUser({
+    query: {
+      enabled: apiEnabled,
+    },
+  });
+
+  const userCurrency =
+    userResponse?.status === 200 ? userResponse.data.currency : "usd";
+
   const portfolios =
     portfoliosResponse?.status === 200 ? portfoliosResponse.data : [];
 
@@ -197,8 +207,8 @@ export function PortfoliosPageContent() {
     pricesResponse?.status === 200 ? pricesResponse.data : undefined;
 
   const formatPrice = useMemo(
-    () => createPriceFormatter(pricesData?.currency ?? "eur").format,
-    [pricesData?.currency],
+    () => createPriceFormatter(userCurrency).format,
+    [userCurrency],
   );
 
   const isLoading =

@@ -11,7 +11,7 @@ export interface PortfolioMovement {
   id: number;
   type: PortfolioMovementType;
   amount: string;
-  date: string;
+  occurred_at: string;
   created_at: string;
   updated_at: string;
 }

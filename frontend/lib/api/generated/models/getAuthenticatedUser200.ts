@@ -11,4 +11,5 @@ export type GetAuthenticatedUser200 = {
   name: string;
   email: string;
   keycloak_id: string;
+  currency: string;
 };

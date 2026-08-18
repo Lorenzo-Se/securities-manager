@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { CalendarIcon } from "lucide-react";
+import { ChevronDownIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -38,6 +38,32 @@ type PortfolioMovementDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
+function toTimeInputValue(date: Date) {
+  return format(date, "HH:mm");
+}
+
+function combineDateAndTime(date: Date, time: string): Date | null {
+  const [hours, minutes] = time.split(":").map(Number);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return null;
+  }
+
+  const combined = new Date(date);
+  combined.setHours(hours, minutes, 0, 0);
+
+  return combined;
+}
+
+function getDefaultDateTime() {
+  const now = new Date();
+
+  return {
+    date: now,
+    time: toTimeInputValue(now),
+  };
+}
+
 export function PortfolioMovementDialog({
   portfolioId,
   open,
@@ -46,7 +72,8 @@ export function PortfolioMovementDialog({
   const queryClient = useQueryClient();
   const [type, setType] = useState<CreatePortfolioMovementBodyType>("deposit");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [date, setDate] = useState<Date | undefined>(() => getDefaultDateTime().date);
+  const [time, setTime] = useState(() => getDefaultDateTime().time);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,15 +104,23 @@ export function PortfolioMovementDialog({
           return;
         }
 
+        if (info?.errors?.occurred_at?.[0]) {
+          setError(info.errors.occurred_at[0]);
+          return;
+        }
+
         setError("Buchung konnte nicht gespeichert werden.");
       },
     },
   });
 
   const resetForm = () => {
+    const defaults = getDefaultDateTime();
     setType("deposit");
     setAmount("");
-    setDate(new Date());
+    setDate(defaults.date);
+    setTime(defaults.time);
+    setCalendarOpen(false);
     setError(null);
   };
 
@@ -98,9 +133,25 @@ export function PortfolioMovementDialog({
       return;
     }
 
+    if (!time) {
+      setError("Bitte wähle eine Uhrzeit aus.");
+      return;
+    }
+
     const parsedAmount = Number(amount);
     if (!amount || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
       setError("Bitte gib eine gültige Menge ein.");
+      return;
+    }
+
+    const occurredAtDate = combineDateAndTime(date, time);
+    if (!occurredAtDate || Number.isNaN(occurredAtDate.getTime())) {
+      setError("Bitte wähle einen gültigen Zeitpunkt aus.");
+      return;
+    }
+
+    if (occurredAtDate.getTime() > Date.now()) {
+      setError("Der Zeitpunkt darf nicht in der Zukunft liegen.");
       return;
     }
 
@@ -109,7 +160,7 @@ export function PortfolioMovementDialog({
       data: {
         type,
         amount: amount.trim(),
-        date: format(date, "yyyy-MM-dd"),
+        occurred_at: occurredAtDate.toISOString(),
       },
     });
   };
@@ -128,7 +179,7 @@ export function PortfolioMovementDialog({
         <DialogHeader>
           <DialogTitle>Buchung hinzufügen</DialogTitle>
           <DialogDescription>
-            Erfasse eine Ein- oder Auszahlung mit Datum und Menge.
+            Erfasse eine Ein- oder Auszahlung mit Zeitpunkt und Menge.
           </DialogDescription>
         </DialogHeader>
 
@@ -154,40 +205,59 @@ export function PortfolioMovementDialog({
               </div>
             </Field>
 
-            <Field>
-              <FieldLabel>Datum</FieldLabel>
-              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                <PopoverTrigger
-                  render={
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !date && "text-muted-foreground",
-                      )}
+            <FieldGroup className="flex-row gap-4">
+              <Field className="flex-1">
+                <FieldLabel htmlFor="movement-date">Datum</FieldLabel>
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                  <PopoverTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="outline"
+                        id="movement-date"
+                        className={cn(
+                          "w-full justify-between font-normal",
+                          !date && "text-muted-foreground",
+                        )}
+                      />
+                    }
+                  >
+                    {date
+                      ? format(date, "PPP", { locale: de })
+                      : "Datum wählen"}
+                    <ChevronDownIcon data-icon="inline-end" />
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-auto overflow-hidden p-0"
+                    align="start"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      captionLayout="dropdown"
+                      defaultMonth={date}
+                      locale={de}
+                      onSelect={(selectedDate) => {
+                        setDate(selectedDate);
+                        setCalendarOpen(false);
+                      }}
+                      disabled={(day) => day > new Date()}
                     />
-                  }
-                >
-                  <CalendarIcon className="size-4" />
-                  {date
-                    ? format(date, "PPP", { locale: de })
-                    : "Datum wählen"}
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(selectedDate) => {
-                      setDate(selectedDate);
-                      setCalendarOpen(false);
-                    }}
-                    disabled={(day) => day > new Date()}
-                    defaultMonth={date}
-                  />
-                </PopoverContent>
-              </Popover>
-            </Field>
+                  </PopoverContent>
+                </Popover>
+              </Field>
+              <Field className="w-32">
+                <FieldLabel htmlFor="movement-time">Uhrzeit</FieldLabel>
+                <Input
+                  type="time"
+                  id="movement-time"
+                  value={time}
+                  onChange={(event) => setTime(event.target.value)}
+                  className="appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                  required
+                />
+              </Field>
+            </FieldGroup>
 
             <Field>
               <FieldLabel htmlFor="movement-amount">Menge</FieldLabel>

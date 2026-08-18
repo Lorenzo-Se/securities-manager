@@ -53,6 +53,7 @@ import {
   useGetPortfolio,
   useListPortfolioMovements,
 } from "@/lib/api/generated/portfolio/portfolio";
+import { useGetAuthenticatedUser } from "@/lib/api/generated/user/user";
 import type { PortfolioMovement } from "@/lib/api/generated/models";
 import { useApiEnabled } from "@/hooks/use-api-enabled";
 import { createPriceFormatter } from "@/lib/format-price";
@@ -104,7 +105,9 @@ function MovementRow({
   return (
     <TableRow>
       <TableCell>
-        {format(parseISO(movement.date), "dd.MM.yyyy", { locale: de })}
+        {format(parseISO(movement.occurred_at), "dd.MM.yyyy HH:mm", {
+          locale: de,
+        })}
       </TableCell>
       <TableCell>
         <Badge variant={isDeposit ? "default" : "destructive"}>
@@ -184,6 +187,15 @@ export function PortfolioDetailContent({
   const portfolio =
     portfolioResponse?.status === 200 ? portfolioResponse.data : null;
 
+  const { data: userResponse } = useGetAuthenticatedUser({
+    query: {
+      enabled: apiEnabled,
+    },
+  });
+
+  const userCurrency =
+    userResponse?.status === 200 ? userResponse.data.currency : "usd";
+
   const {
     data: movementsResponse,
     isLoading: isLoadingMovements,
@@ -213,8 +225,8 @@ export function PortfolioDetailContent({
   const price = pricesData?.prices[portfolio?.crypto_id ?? ""];
 
   const formatPrice = useMemo(
-    () => createPriceFormatter(pricesData?.currency ?? "eur").format,
-    [pricesData?.currency],
+    () => createPriceFormatter(userCurrency).format,
+    [userCurrency],
   );
 
   const portfolioValue = useMemo(() => {
@@ -365,7 +377,7 @@ export function PortfolioDetailContent({
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Datum</TableHead>
+                          <TableHead>Zeitpunkt</TableHead>
                           <TableHead>Typ</TableHead>
                           <TableHead className="text-right">Menge</TableHead>
                           <TableHead className="w-12" />

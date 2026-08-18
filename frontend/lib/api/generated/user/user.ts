@@ -6,26 +6,32 @@
  * OpenAPI spec version: 1.0.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
-  GetAuthenticatedUser200
+  GetAuthenticatedUser200,
+  UpdateAuthenticatedUser200,
+  UpdateAuthenticatedUserBody
 } from '../models';
 
 import { customInstance } from '../../custom-instance';
-import type { ErrorType } from '../../custom-instance';
+import type { ErrorType , BodyType } from '../../custom-instance';
 
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
@@ -167,3 +173,97 @@ export function useGetAuthenticatedUser<TData = Awaited<ReturnType<typeof getAut
 
 
 
+export type updateAuthenticatedUserResponse200 = {
+  data: UpdateAuthenticatedUser200
+  status: 200
+}
+
+export type updateAuthenticatedUserResponse401 = {
+  data: void
+  status: 401
+}
+
+export type updateAuthenticatedUserResponse422 = {
+  data: void
+  status: 422
+}
+
+export type updateAuthenticatedUserResponseSuccess = (updateAuthenticatedUserResponse200) & {
+  headers: Headers;
+};
+export type updateAuthenticatedUserResponseError = (updateAuthenticatedUserResponse401 | updateAuthenticatedUserResponse422) & {
+  headers: Headers;
+};
+
+export type updateAuthenticatedUserResponse = (updateAuthenticatedUserResponseSuccess | updateAuthenticatedUserResponseError)
+
+export const getUpdateAuthenticatedUserUrl = () => {
+
+
+
+
+  return `/user`
+}
+
+/**
+ * @summary Benutzereinstellungen aktualisieren
+ */
+export const updateAuthenticatedUser = async (updateAuthenticatedUserBody: UpdateAuthenticatedUserBody, options?: Parameters<typeof customInstance>[1]): Promise<updateAuthenticatedUserResponse> => {
+
+  return customInstance<updateAuthenticatedUserResponse>(getUpdateAuthenticatedUserUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateAuthenticatedUserBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateAuthenticatedUserMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAuthenticatedUser>>, TError,{data: BodyType<UpdateAuthenticatedUserBody>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAuthenticatedUser>>, TError,{data: BodyType<UpdateAuthenticatedUserBody>}, TContext> => {
+
+const mutationKey = ['updateAuthenticatedUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAuthenticatedUser>>, {data: BodyType<UpdateAuthenticatedUserBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateAuthenticatedUser(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAuthenticatedUserMutationResult = NonNullable<Awaited<ReturnType<typeof updateAuthenticatedUser>>>
+    export type UpdateAuthenticatedUserMutationBody = BodyType<UpdateAuthenticatedUserBody>
+    export type UpdateAuthenticatedUserMutationError = ErrorType<void>
+
+    /**
+ * @summary Benutzereinstellungen aktualisieren
+ */
+export const useUpdateAuthenticatedUser = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAuthenticatedUser>>, TError,{data: BodyType<UpdateAuthenticatedUserBody>}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateAuthenticatedUser>>,
+        TError,
+        {data: BodyType<UpdateAuthenticatedUserBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateAuthenticatedUserMutationOptions(options), queryClient);
+    }

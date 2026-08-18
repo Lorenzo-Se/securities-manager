@@ -33,6 +33,12 @@ export function AuthButton() {
       >
         Portfolios
       </Link>
+      <Link
+        href="/settings"
+        className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background px-2.5 text-sm font-medium hover:bg-muted"
+      >
+        Einstellungen
+      </Link>
       <Button variant="outline" onClick={() => signOut()}>
         Abmelden
       </Button>

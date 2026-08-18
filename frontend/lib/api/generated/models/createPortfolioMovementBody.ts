@@ -10,5 +10,5 @@ import type { CreatePortfolioMovementBodyType } from './createPortfolioMovementB
 export type CreatePortfolioMovementBody = {
   type: CreatePortfolioMovementBodyType;
   amount: string;
-  date: string;
+  occurred_at: string;
 };
