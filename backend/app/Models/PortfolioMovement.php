@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'portfolio_id',
     'type',
     'amount',
-    'date',
+    'occurred_at',
 ])]
 class PortfolioMovement extends Model
 {
@@ -26,7 +26,7 @@ class PortfolioMovement extends Model
     {
         return [
             'amount' => 'decimal:8',
-            'date' => 'date',
+            'occurred_at' => 'datetime',
         ];
     }
 

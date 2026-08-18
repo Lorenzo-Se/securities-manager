@@ -17,7 +17,7 @@ class PortfolioMovementFactory extends Factory
             'portfolio_id' => Portfolio::factory(),
             'type' => 'deposit',
             'amount' => fake()->randomFloat(8, 0.00000001, 10),
-            'date' => fake()->dateTimeBetween('-1 year', 'now')->format('Y-m-d'),
+            'occurred_at' => fake()->dateTimeBetween('-1 year', 'now'),
         ];
     }
 

@@ -364,7 +364,7 @@
                                 "required": [
                                     "type",
                                     "amount",
-                                    "date"
+                                    "occurred_at"
                                 ],
                                 "properties": {
                                     "type": {
@@ -379,10 +379,10 @@
                                         "type": "string",
                                         "example": "0.5"
                                     },
-                                    "date": {
+                                    "occurred_at": {
                                         "type": "string",
-                                        "format": "date",
-                                        "example": "2026-08-15"
+                                        "format": "date-time",
+                                        "example": "2026-08-15T14:30:00+02:00"
                                     }
                                 },
                                 "type": "object"
@@ -479,7 +479,8 @@
                                         "id",
                                         "name",
                                         "email",
-                                        "keycloak_id"
+                                        "keycloak_id",
+                                        "currency"
                                     ],
                                     "properties": {
                                         "id": {
@@ -499,6 +500,10 @@
                                             "type": "string",
                                             "format": "uuid",
                                             "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                                        },
+                                        "currency": {
+                                            "type": "string",
+                                            "example": "usd"
                                         }
                                     },
                                     "type": "object"
@@ -508,6 +513,86 @@
                     },
                     "401": {
                         "description": "Nicht authentifiziert"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Benutzereinstellungen aktualisieren",
+                "operationId": "updateAuthenticatedUser",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "currency"
+                                ],
+                                "properties": {
+                                    "currency": {
+                                        "type": "string",
+                                        "example": "eur"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Aktualisierter Benutzer",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "id",
+                                        "name",
+                                        "email",
+                                        "keycloak_id",
+                                        "currency"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "name": {
+                                            "type": "string",
+                                            "example": "Demo User"
+                                        },
+                                        "email": {
+                                            "type": "string",
+                                            "format": "email",
+                                            "example": "demo@example.com"
+                                        },
+                                        "keycloak_id": {
+                                            "type": "string",
+                                            "format": "uuid",
+                                            "example": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                                        },
+                                        "currency": {
+                                            "type": "string",
+                                            "example": "eur"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "422": {
+                        "description": "Validierungsfehler"
                     }
                 },
                 "security": [
@@ -572,7 +657,7 @@
                     "id",
                     "type",
                     "amount",
-                    "date",
+                    "occurred_at",
                     "created_at",
                     "updated_at"
                 ],
@@ -593,10 +678,10 @@
                         "type": "string",
                         "example": "0.50000000"
                     },
-                    "date": {
+                    "occurred_at": {
                         "type": "string",
-                        "format": "date",
-                        "example": "2026-08-15"
+                        "format": "date-time",
+                        "example": "2026-08-15T14:30:00+02:00"
                     },
                     "created_at": {
                         "type": "string",

@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', HealthController::class);
 
 Route::middleware('auth.keycloak')->group(function () {
-    Route::get('/user', UserController::class);
+    Route::get('/user', [UserController::class, 'show']);
+    Route::patch('/user', [UserController::class, 'update']);
     Route::get('/crypto/coins', [CryptoController::class, 'coins']);
     Route::get('/crypto/prices', [CryptoController::class, 'prices']);
     Route::get('/portfolios', [PortfolioController::class, 'index']);

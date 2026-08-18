@@ -20,12 +20,12 @@ use OpenApi\Attributes as OA;
 )]
 #[OA\Schema(
     schema: 'PortfolioMovement',
-    required: ['id', 'type', 'amount', 'date', 'created_at', 'updated_at'],
+    required: ['id', 'type', 'amount', 'occurred_at', 'created_at', 'updated_at'],
     properties: [
         new OA\Property(property: 'id', type: 'integer', example: 1),
         new OA\Property(property: 'type', type: 'string', enum: ['deposit', 'withdrawal'], example: 'deposit'),
         new OA\Property(property: 'amount', type: 'string', example: '0.50000000'),
-        new OA\Property(property: 'date', type: 'string', format: 'date', example: '2026-08-15'),
+        new OA\Property(property: 'occurred_at', type: 'string', format: 'date-time', example: '2026-08-15T14:30:00+02:00'),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
     ],

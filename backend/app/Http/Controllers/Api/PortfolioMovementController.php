@@ -44,7 +44,7 @@ class PortfolioMovementController extends Controller
         $this->ensurePortfolioOwnership($request, $portfolio);
 
         $movements = $portfolio->movements()
-            ->orderByDesc('date')
+            ->orderByDesc('occurred_at')
             ->orderByDesc('id')
             ->get();
 
@@ -70,11 +70,11 @@ class PortfolioMovementController extends Controller
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['type', 'amount', 'date'],
+                required: ['type', 'amount', 'occurred_at'],
                 properties: [
                     new OA\Property(property: 'type', type: 'string', enum: ['deposit', 'withdrawal'], example: 'deposit'),
                     new OA\Property(property: 'amount', type: 'string', example: '0.5'),
-                    new OA\Property(property: 'date', type: 'string', format: 'date', example: '2026-08-15'),
+                    new OA\Property(property: 'occurred_at', type: 'string', format: 'date-time', example: '2026-08-15T14:30:00+02:00'),
                 ],
             ),
         ),
@@ -98,7 +98,7 @@ class PortfolioMovementController extends Controller
         $movement = $portfolio->movements()->create([
             'type' => $request->string('type')->toString(),
             'amount' => $request->string('amount')->toString(),
-            'date' => $request->date('date'),
+            'occurred_at' => $request->date('occurred_at'),
         ]);
 
         return response()->json($this->formatMovement($movement), 201);
@@ -162,7 +162,7 @@ class PortfolioMovementController extends Controller
             'id' => $movement->id,
             'type' => $movement->type,
             'amount' => number_format((float) $movement->amount, 8, '.', ''),
-            'date' => $movement->date?->format('Y-m-d'),
+            'occurred_at' => $movement->occurred_at?->toIso8601String(),
             'created_at' => $movement->created_at?->toIso8601String(),
             'updated_at' => $movement->updated_at?->toIso8601String(),
         ];

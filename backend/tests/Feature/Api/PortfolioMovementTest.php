@@ -44,11 +44,11 @@ it('returns portfolio with balance', function () {
 
     PortfolioMovement::factory()->for($portfolio)->deposit()->create([
         'amount' => '1.5',
-        'date' => '2026-08-10',
+        'occurred_at' => '2026-08-10 10:00:00',
     ]);
     PortfolioMovement::factory()->for($portfolio)->withdrawal()->create([
         'amount' => '0.25',
-        'date' => '2026-08-12',
+        'occurred_at' => '2026-08-12 15:30:00',
     ]);
 
     $this->withToken('valid-token')
@@ -76,11 +76,11 @@ it('lists movements for own portfolio', function () {
 
     PortfolioMovement::factory()->for($portfolio)->deposit()->create([
         'amount' => '1',
-        'date' => '2026-08-10',
+        'occurred_at' => '2026-08-10 09:00:00',
     ]);
     PortfolioMovement::factory()->for($portfolio)->withdrawal()->create([
         'amount' => '0.5',
-        'date' => '2026-08-11',
+        'occurred_at' => '2026-08-11 18:00:00',
     ]);
 
     $this->withToken('valid-token')
@@ -109,14 +109,14 @@ it('creates a deposit movement', function () {
         ->postJson("/api/portfolios/{$portfolio->id}/movements", [
             'type' => 'deposit',
             'amount' => '0.5',
-            'date' => '2026-08-15',
+            'occurred_at' => '2026-08-15T14:30:00',
         ])
         ->assertCreated()
         ->assertJson([
             'type' => 'deposit',
             'amount' => '0.50000000',
-            'date' => '2026-08-15',
-        ]);
+        ])
+        ->assertJsonPath('occurred_at', fn ($value) => str_starts_with((string) $value, '2026-08-15T14:30:00'));
 
     expect(PortfolioMovement::query()->where('portfolio_id', $portfolio->id)->count())->toBe(1);
 });
@@ -127,14 +127,14 @@ it('creates a withdrawal when balance is sufficient', function () {
 
     PortfolioMovement::factory()->for($portfolio)->deposit()->create([
         'amount' => '2',
-        'date' => '2026-08-10',
+        'occurred_at' => '2026-08-10 10:00:00',
     ]);
 
     $this->withToken('valid-token')
         ->postJson("/api/portfolios/{$portfolio->id}/movements", [
             'type' => 'withdrawal',
             'amount' => '1.5',
-            'date' => '2026-08-15',
+            'occurred_at' => '2026-08-15T16:00:00',
         ])
         ->assertCreated()
         ->assertJson([
@@ -143,23 +143,49 @@ it('creates a withdrawal when balance is sufficient', function () {
         ]);
 });
 
-it('rejects withdrawal exceeding balance', function () {
+it('rejects withdrawal exceeding balance at occurred_at', function () {
     $user = mockMovementAuthenticatedUser();
     $portfolio = Portfolio::factory()->for($user)->create();
 
     PortfolioMovement::factory()->for($portfolio)->deposit()->create([
         'amount' => '1',
-        'date' => '2026-08-10',
+        'occurred_at' => '2026-08-10 10:00:00',
     ]);
 
     $this->withToken('valid-token')
         ->postJson("/api/portfolios/{$portfolio->id}/movements", [
             'type' => 'withdrawal',
             'amount' => '1.5',
-            'date' => '2026-08-15',
+            'occurred_at' => '2026-08-15T16:00:00',
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['amount']);
+});
+
+it('allows withdrawal at past date based on balance at occurred_at', function () {
+    $user = mockMovementAuthenticatedUser();
+    $portfolio = Portfolio::factory()->for($user)->create();
+
+    PortfolioMovement::factory()->for($portfolio)->deposit()->create([
+        'amount' => '2',
+        'occurred_at' => '2026-08-10 10:00:00',
+    ]);
+    PortfolioMovement::factory()->for($portfolio)->withdrawal()->create([
+        'amount' => '2',
+        'occurred_at' => '2026-08-20 10:00:00',
+    ]);
+
+    $this->withToken('valid-token')
+        ->postJson("/api/portfolios/{$portfolio->id}/movements", [
+            'type' => 'withdrawal',
+            'amount' => '1',
+            'occurred_at' => '2026-08-15T16:00:00',
+        ])
+        ->assertCreated()
+        ->assertJson([
+            'type' => 'withdrawal',
+            'amount' => '1.00000000',
+        ]);
 });
 
 it('rejects invalid amount', function () {
@@ -170,13 +196,13 @@ it('rejects invalid amount', function () {
         ->postJson("/api/portfolios/{$portfolio->id}/movements", [
             'type' => 'deposit',
             'amount' => '0',
-            'date' => '2026-08-15',
+            'occurred_at' => '2026-08-15T14:30:00',
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['amount']);
 });
 
-it('rejects future date', function () {
+it('rejects future timestamp', function () {
     $user = mockMovementAuthenticatedUser();
     $portfolio = Portfolio::factory()->for($user)->create();
 
@@ -184,10 +210,10 @@ it('rejects future date', function () {
         ->postJson("/api/portfolios/{$portfolio->id}/movements", [
             'type' => 'deposit',
             'amount' => '0.5',
-            'date' => now()->addDay()->format('Y-m-d'),
+            'occurred_at' => now()->addHour()->toIso8601String(),
         ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['date']);
+        ->assertJsonValidationErrors(['occurred_at']);
 });
 
 it('deletes own movement', function () {

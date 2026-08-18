@@ -93,7 +93,7 @@ class CryptoController extends Controller
         }
 
         $idList = array_values(array_filter(array_map('trim', explode(',', $ids))));
-        $currency = strtolower((string) config('crypto.coingecko.default_currency'));
+        $currency = $request->user()->preferredCurrency();
         $rawPrices = $coinGecko->getPrices($idList, $currency);
 
         $prices = [];

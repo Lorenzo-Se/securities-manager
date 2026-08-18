@@ -1,10 +1,28 @@
 <?php
 
 return [
+    'supported_currencies' => [
+        'eur',
+        'usd',
+        'chf',
+        'gbp',
+        'jpy',
+        'cad',
+        'aud',
+        'sek',
+        'nok',
+        'dkk',
+        'pln',
+        'czk',
+        'huf',
+        'brl',
+        'inr',
+    ],
+
     'coingecko' => [
         'base_url' => env('COINGECKO_BASE_URL', 'https://api.coingecko.com/api/v3'),
         'api_key' => env('COINGECKO_API_KEY'),
-        'default_currency' => env('COINGECKO_DEFAULT_CURRENCY', 'eur'),
+        'default_currency' => env('COINGECKO_DEFAULT_CURRENCY', 'usd'),
         'cache' => [
             'coins_list_ttl' => (int) env('COINGECKO_COINS_LIST_CACHE_TTL', 86400),
             'markets_ttl' => (int) env('COINGECKO_MARKETS_CACHE_TTL', 900),

@@ -22,7 +22,7 @@ class StorePortfolioMovementRequest extends FormRequest
         return [
             'type' => ['required', 'string', Rule::in(['deposit', 'withdrawal'])],
             'amount' => ['required', 'numeric', 'gt:0', 'regex:/^\d{1,16}(\.\d{1,8})?$/'],
-            'date' => ['required', 'date', 'before_or_equal:today'],
+            'occurred_at' => ['required', 'date', 'before_or_equal:now'],
         ];
     }
 
@@ -40,7 +40,8 @@ class StorePortfolioMovementRequest extends FormRequest
             /** @var Portfolio $portfolio */
             $portfolio = $this->route('portfolio');
             $amount = (float) $this->input('amount');
-            $balance = (float) $portfolio->balance;
+            $occurredAt = $this->date('occurred_at');
+            $balance = (float) $portfolio->balanceAt($occurredAt);
 
             if ($amount > $balance) {
                 $validator->errors()->add('amount', 'Nicht genügend Bestand.');

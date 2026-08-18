@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('portfolio_id')->constrained()->cascadeOnDelete();
             $table->enum('type', ['deposit', 'withdrawal']);
             $table->decimal('amount', 24, 8);
-            $table->date('date');
+            $table->dateTime('occurred_at');
             $table->timestamps();
         });
     }

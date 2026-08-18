@@ -88,24 +88,23 @@ it('returns crypto prices for given ids', function () {
 
     $this->mock(CoinGeckoClient::class, function ($mock) {
         $mock->shouldReceive('getPrices')
-            ->with(['bitcoin'], 'eur')
-            ->andReturn(['bitcoin' => ['eur' => 45000.12]]);
+            ->with(['bitcoin'], 'usd')
+            ->andReturn(['bitcoin' => ['usd' => 45000.12]]);
     });
 
     $this->withToken('valid-token')
         ->getJson('/api/crypto/prices?ids=bitcoin')
         ->assertOk()
         ->assertJson([
-            'currency' => 'eur',
+            'currency' => 'usd',
             'prices' => ['bitcoin' => 45000.12],
         ]);
 });
 
-it('returns crypto prices in configured currency', function () {
-    config(['crypto.coingecko.default_currency' => 'chf']);
-
+it('returns crypto prices in user currency', function () {
     $user = User::factory()->create([
         'keycloak_id' => 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        'currency' => 'chf',
     ]);
 
     $claims = [
@@ -261,12 +260,12 @@ it('returns top coins sorted by market cap when no search is provided', function
 it('fetches prices from coingecko api', function () {
     Http::fake([
         'api.coingecko.com/api/v3/simple/price*' => Http::response([
-            'bitcoin' => ['eur' => 45000.12],
+            'bitcoin' => ['usd' => 45000.12],
         ]),
     ]);
 
     $client = app(CoinGeckoClient::class);
-    $prices = $client->getPrices(['bitcoin']);
+    $prices = $client->getPrices(['bitcoin'], 'usd');
 
-    expect($prices)->toBe(['bitcoin' => ['eur' => 45000.12]]);
+    expect($prices)->toBe(['bitcoin' => ['usd' => 45000.12]]);
 });
