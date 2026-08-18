@@ -12,6 +12,102 @@
         }
     ],
     "paths": {
+        "/crypto/coins": {
+            "get": {
+                "tags": [
+                    "Crypto"
+                ],
+                "summary": "Kryptowährungen suchen",
+                "operationId": "listCryptoCoins",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "btc"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste der Kryptowährungen",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/CryptoCoin"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/crypto/prices": {
+            "get": {
+                "tags": [
+                    "Crypto"
+                ],
+                "summary": "Aktuelle Krypto-Preise abrufen",
+                "operationId": "getCryptoPrices",
+                "parameters": [
+                    {
+                        "name": "ids",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "bitcoin,ethereum"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Preise in EUR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "properties": {
+                                            "eur": {
+                                                "type": "number",
+                                                "format": "float",
+                                                "example": 45000.12
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "422": {
+                        "description": "Validierungsfehler"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/health": {
             "get": {
                 "tags": [
@@ -47,6 +143,127 @@
                         }
                     }
                 }
+            }
+        },
+        "/portfolios": {
+            "get": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Portfolios des Benutzers abrufen",
+                "operationId": "listPortfolios",
+                "responses": {
+                    "200": {
+                        "description": "Liste der Portfolios",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Portfolio"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Neues Portfolio erstellen",
+                "operationId": "createPortfolio",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "crypto_id"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Mein BTC"
+                                    },
+                                    "crypto_id": {
+                                        "type": "string",
+                                        "example": "bitcoin"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Portfolio erstellt",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Portfolio"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "422": {
+                        "description": "Validierungsfehler"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/portfolios/{portfolio}": {
+            "delete": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Portfolio löschen",
+                "operationId": "deletePortfolio",
+                "parameters": [
+                    {
+                        "name": "portfolio",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Portfolio gelöscht"
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "404": {
+                        "description": "Portfolio nicht gefunden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/user": {
@@ -106,17 +323,84 @@
             }
         }
     },
-    "tags": [
-        {
-            "name": "System",
-            "description": "System"
-        },
-        {
-            "name": "User",
-            "description": "User"
-        }
-    ],
     "components": {
+        "schemas": {
+            "Portfolio": {
+                "required": [
+                    "id",
+                    "name",
+                    "crypto_id",
+                    "crypto_symbol",
+                    "crypto_name",
+                    "created_at",
+                    "updated_at"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Mein BTC"
+                    },
+                    "crypto_id": {
+                        "type": "string",
+                        "example": "bitcoin"
+                    },
+                    "crypto_symbol": {
+                        "type": "string",
+                        "example": "btc"
+                    },
+                    "crypto_name": {
+                        "type": "string",
+                        "example": "Bitcoin"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "CryptoCoin": {
+                "required": [
+                    "id",
+                    "symbol",
+                    "name",
+                    "image"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "example": "bitcoin"
+                    },
+                    "symbol": {
+                        "type": "string",
+                        "example": "btc"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Bitcoin"
+                    },
+                    "image": {
+                        "type": "string",
+                        "format": "uri",
+                        "example": "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png"
+                    },
+                    "market_cap_rank": {
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            }
+        },
         "securitySchemes": {
             "bearerAuth": {
                 "type": "http",
@@ -125,5 +409,23 @@
                 "description": "Keycloak Access Token im Format: Bearer <token>"
             }
         }
-    }
+    },
+    "tags": [
+        {
+            "name": "Crypto",
+            "description": "Crypto"
+        },
+        {
+            "name": "System",
+            "description": "System"
+        },
+        {
+            "name": "Portfolio",
+            "description": "Portfolio"
+        },
+        {
+            "name": "User",
+            "description": "User"
+        }
+    ]
 }

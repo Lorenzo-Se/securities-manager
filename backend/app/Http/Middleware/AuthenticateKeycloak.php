@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Services\Keycloak\JwtValidator;
+use App\Services\Keycloak\UserInfoResolver;
 use App\Services\Keycloak\UserProvisioner;
 use Closure;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class AuthenticateKeycloak
     public function __construct(
         private readonly JwtValidator $jwtValidator,
         private readonly UserProvisioner $userProvisioner,
+        private readonly UserInfoResolver $userInfoResolver,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -29,6 +31,11 @@ class AuthenticateKeycloak
 
         try {
             $claims = $this->jwtValidator->validate($token);
+
+            if (! is_string($claims['sub'] ?? null) || $claims['sub'] === '') {
+                $claims['sub'] = $this->userInfoResolver->resolveSubject($token);
+            }
+
             $user = $this->userProvisioner->provision($claims);
             Auth::setUser($user);
             $request->setUserResolver(fn () => $user);
