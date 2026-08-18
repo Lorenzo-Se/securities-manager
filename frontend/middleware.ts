@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 
 export default auth((request) => {
-  if (!request.auth && request.nextUrl.pathname.startsWith("/dashboard")) {
+  if (!request.auth && request.nextUrl.pathname.startsWith("/portfolios")) {
     const signInUrl = new URL("/api/auth/signin", request.nextUrl.origin);
     signInUrl.searchParams.set("callbackUrl", request.nextUrl.pathname);
 
@@ -11,5 +11,5 @@ export default auth((request) => {
 });
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/portfolios/:path*"],
 };

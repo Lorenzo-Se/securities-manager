@@ -5,24 +5,21 @@ import { useLayoutEffect } from "react";
 
 import { setAccessToken } from "@/lib/api/access-token";
 
-function AccessTokenSync() {
+function AccessTokenSync({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const accessToken = session?.accessToken ?? null;
-
-  setAccessToken(accessToken);
 
   useLayoutEffect(() => {
     setAccessToken(accessToken);
   }, [accessToken]);
 
-  return null;
+  return children;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <AccessTokenSync />
-      {children}
+      <AccessTokenSync>{children}</AccessTokenSync>
     </SessionProvider>
   );
 }

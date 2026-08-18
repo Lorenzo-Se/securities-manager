@@ -28,10 +28,10 @@ export function AuthButton() {
         {session.user?.name ?? session.user?.email}
       </span>
       <Link
-        href="/dashboard"
+        href="/portfolios"
         className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background px-2.5 text-sm font-medium hover:bg-muted"
       >
-        Dashboard
+        Portfolios
       </Link>
       <Button variant="outline" onClick={() => signOut()}>
         Abmelden

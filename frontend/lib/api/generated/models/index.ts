@@ -6,5 +6,11 @@
  * OpenAPI spec version: 1.0.0
  */
 
+export * from './createPortfolioBody';
+export * from './cryptoCoin';
 export * from './getAuthenticatedUser200';
+export * from './getCryptoPrices200';
+export * from './getCryptoPricesParams';
 export * from './getHealth200';
+export * from './listCryptoCoinsParams';
+export * from './portfolio';

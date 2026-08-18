@@ -38,6 +38,14 @@ const buildUrl = (path: string, params?: Record<string, unknown>): string => {
   return url.toString();
 };
 
+const serializeBody = (body: unknown): string => {
+  if (typeof body === "string") {
+    return body;
+  }
+
+  return JSON.stringify(body);
+};
+
 export const customInstance = async <T>(
   url: string,
   { method, params, body, headers, signal }: RequestConfig,
@@ -61,7 +69,7 @@ export const customInstance = async <T>(
       ...requestHeaders,
       ...(headers as Record<string, string> | undefined),
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body !== undefined ? serializeBody(body) : undefined,
     signal,
   });
 
