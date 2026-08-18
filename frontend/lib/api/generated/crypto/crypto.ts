@@ -22,7 +22,7 @@ import type {
 
 import type {
   CryptoCoin,
-  GetCryptoPrices200,
+  CryptoPrices,
   GetCryptoPricesParams,
   ListCryptoCoinsParams
 } from '../models';
@@ -177,7 +177,7 @@ export function useListCryptoCoins<TData = Awaited<ReturnType<typeof listCryptoC
 
 
 export type getCryptoPricesResponse200 = {
-  data: GetCryptoPrices200
+  data: CryptoPrices
   status: 200
 }
 

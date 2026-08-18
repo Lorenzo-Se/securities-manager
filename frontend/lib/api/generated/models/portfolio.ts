@@ -12,6 +12,7 @@ export interface Portfolio {
   crypto_id: string;
   crypto_symbol: string;
   crypto_name: string;
+  balance: string;
   created_at: string;
   updated_at: string;
 }

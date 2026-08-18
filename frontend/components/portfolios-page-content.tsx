@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { Trash2Icon, WalletIcon } from "lucide-react";
@@ -43,20 +44,23 @@ import {
 } from "@/lib/api/generated/portfolio/portfolio";
 import type { Portfolio } from "@/lib/api/generated/models";
 import { useApiEnabled } from "@/hooks/use-api-enabled";
+import { createPriceFormatter } from "@/lib/format-price";
 
-const priceFormatter = new Intl.NumberFormat("de-DE", {
-  style: "currency",
-  currency: "EUR",
+const amountFormatter = new Intl.NumberFormat("de-DE", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 8,
 });
 
 function PortfolioCard({
   portfolio,
   price,
   isPriceLoading,
+  formatPrice,
 }: {
   portfolio: Portfolio;
   price?: number;
   isPriceLoading: boolean;
+  formatPrice: (value: number) => string;
 }) {
   const queryClient = useQueryClient();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -76,17 +80,17 @@ function PortfolioCard({
   });
 
   return (
-    <Card>
+    <Card className="transition-colors hover:border-foreground/20">
       <CardHeader className="flex flex-row items-start justify-between gap-4">
-        <div className="space-y-1">
-          <CardTitle>{portfolio.name}</CardTitle>
+        <Link href={`/portfolios/${portfolio.id}`} className="min-w-0 flex-1 space-y-1">
+          <CardTitle className="hover:underline">{portfolio.name}</CardTitle>
           <CardDescription>
             <Badge variant="secondary" className="uppercase">
               {portfolio.crypto_symbol}
             </Badge>{" "}
             {portfolio.crypto_name}
           </CardDescription>
-        </div>
+        </Link>
 
         <AlertDialog>
           <AlertDialogTrigger
@@ -123,17 +127,34 @@ function PortfolioCard({
           </AlertDialogContent>
         </AlertDialog>
       </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">Aktueller Preis</p>
-        <p className="text-2xl font-semibold tracking-tight">
-          {isPriceLoading ? (
-            <Spinner className="size-5" />
-          ) : price !== undefined ? (
-            priceFormatter.format(price)
-          ) : (
-            "—"
-          )}
-        </p>
+      <CardContent className="space-y-4">
+        <div>
+          <p className="text-sm text-muted-foreground">Bestand</p>
+          <p className="text-2xl font-semibold tracking-tight">
+            {amountFormatter.format(Number(portfolio.balance))}{" "}
+            <span className="text-base font-medium uppercase text-muted-foreground">
+              {portfolio.crypto_symbol}
+            </span>
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">Aktueller Preis</p>
+          <p className="text-2xl font-semibold tracking-tight">
+            {isPriceLoading ? (
+              <Spinner className="size-5" />
+            ) : price !== undefined ? (
+              formatPrice(price)
+            ) : (
+              "—"
+            )}
+          </p>
+        </div>
+        <Link
+          href={`/portfolios/${portfolio.id}`}
+          className="inline-flex h-7 w-full items-center justify-center rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-sm font-medium hover:bg-muted hover:text-foreground"
+        >
+          Buchungen verwalten
+        </Link>
       </CardContent>
     </Card>
   );
@@ -172,8 +193,13 @@ export function PortfoliosPageContent() {
       },
     );
 
-  const prices =
+  const pricesData =
     pricesResponse?.status === 200 ? pricesResponse.data : undefined;
+
+  const formatPrice = useMemo(
+    () => createPriceFormatter(pricesData?.currency ?? "eur").format,
+    [pricesData?.currency],
+  );
 
   const isLoading =
     sessionStatus === "loading" || (apiEnabled && isLoadingPortfolios);
@@ -241,8 +267,9 @@ export function PortfoliosPageContent() {
               <PortfolioCard
                 key={portfolio.id}
                 portfolio={portfolio}
-                price={prices?.[portfolio.crypto_id]?.eur}
+                price={pricesData?.prices[portfolio.crypto_id]}
                 isPriceLoading={isPricesLoading}
+                formatPrice={formatPrice}
               />
             ))}
           </div>
