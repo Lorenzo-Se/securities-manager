@@ -3,6 +3,7 @@
 use App\Models\Portfolio;
 use App\Models\PortfolioMovement;
 use App\Models\User;
+use App\Services\Crypto\CoinGeckoClient;
 use App\Services\Keycloak\JwtValidator;
 use App\Services\Keycloak\UserProvisioner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,16 +39,26 @@ function mockMovementAuthenticatedUser(?User $user = null): User
     return $user;
 }
 
+function mockMovementCoinGecko(float $unitPriceUsd = 45000.12): void
+{
+    test()->mock(CoinGeckoClient::class, function ($mock) use ($unitPriceUsd) {
+        $mock->shouldReceive('getHistoricalPrice')
+            ->andReturn($unitPriceUsd);
+    });
+}
+
 it('returns portfolio with balance', function () {
     $user = mockMovementAuthenticatedUser();
     $portfolio = Portfolio::factory()->for($user)->create();
 
     PortfolioMovement::factory()->for($portfolio)->deposit()->create([
         'amount' => '1.5',
+        'unit_price_usd' => '40000',
         'occurred_at' => '2026-08-10 10:00:00',
     ]);
     PortfolioMovement::factory()->for($portfolio)->withdrawal()->create([
         'amount' => '0.25',
+        'unit_price_usd' => '42000',
         'occurred_at' => '2026-08-12 15:30:00',
     ]);
 
@@ -57,6 +68,7 @@ it('returns portfolio with balance', function () {
         ->assertJson([
             'id' => $portfolio->id,
             'balance' => '1.25000000',
+            'cost_basis_usd' => '50000.00000000',
         ]);
 });
 
@@ -102,6 +114,7 @@ it('returns not found when listing movements for another users portfolio', funct
 });
 
 it('creates a deposit movement', function () {
+    mockMovementCoinGecko(50000.5);
     $user = mockMovementAuthenticatedUser();
     $portfolio = Portfolio::factory()->for($user)->create();
 
@@ -115,6 +128,7 @@ it('creates a deposit movement', function () {
         ->assertJson([
             'type' => 'deposit',
             'amount' => '0.50000000',
+            'unit_price_usd' => '50000.50000000',
         ])
         ->assertJsonPath('occurred_at', fn ($value) => str_starts_with((string) $value, '2026-08-15T14:30:00'));
 
@@ -122,11 +136,13 @@ it('creates a deposit movement', function () {
 });
 
 it('creates a withdrawal when balance is sufficient', function () {
+    mockMovementCoinGecko();
     $user = mockMovementAuthenticatedUser();
     $portfolio = Portfolio::factory()->for($user)->create();
 
     PortfolioMovement::factory()->for($portfolio)->deposit()->create([
         'amount' => '2',
+        'unit_price_usd' => '40000',
         'occurred_at' => '2026-08-10 10:00:00',
     ]);
 
@@ -163,15 +179,18 @@ it('rejects withdrawal exceeding balance at occurred_at', function () {
 });
 
 it('allows withdrawal at past date based on balance at occurred_at', function () {
+    mockMovementCoinGecko();
     $user = mockMovementAuthenticatedUser();
     $portfolio = Portfolio::factory()->for($user)->create();
 
     PortfolioMovement::factory()->for($portfolio)->deposit()->create([
         'amount' => '2',
+        'unit_price_usd' => '40000',
         'occurred_at' => '2026-08-10 10:00:00',
     ]);
     PortfolioMovement::factory()->for($portfolio)->withdrawal()->create([
         'amount' => '2',
+        'unit_price_usd' => '45000',
         'occurred_at' => '2026-08-20 10:00:00',
     ]);
 

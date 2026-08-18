@@ -94,19 +94,29 @@ class CryptoController extends Controller
 
         $idList = array_values(array_filter(array_map('trim', explode(',', $ids))));
         $currency = $request->user()->preferredCurrency();
-        $rawPrices = $coinGecko->getPrices($idList, $currency);
+        $referenceCurrency = 'usd';
+        $vsCurrencies = $currency === $referenceCurrency
+            ? [$referenceCurrency]
+            : [$referenceCurrency, $currency];
+        $rawPrices = $coinGecko->getPrices($idList, $vsCurrencies);
 
         $prices = [];
+        $referencePrices = [];
 
         foreach ($idList as $id) {
             $prices[$id] = isset($rawPrices[$id][$currency])
                 ? (float) $rawPrices[$id][$currency]
+                : null;
+            $referencePrices[$id] = isset($rawPrices[$id][$referenceCurrency])
+                ? (float) $rawPrices[$id][$referenceCurrency]
                 : null;
         }
 
         return response()->json([
             'currency' => $currency,
             'prices' => $prices,
+            'reference_currency' => $referenceCurrency,
+            'reference_prices' => $referencePrices,
         ]);
     }
 }

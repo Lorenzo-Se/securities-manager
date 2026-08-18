@@ -88,7 +88,7 @@ it('returns crypto prices for given ids', function () {
 
     $this->mock(CoinGeckoClient::class, function ($mock) {
         $mock->shouldReceive('getPrices')
-            ->with(['bitcoin'], 'usd')
+            ->with(['bitcoin'], ['usd'])
             ->andReturn(['bitcoin' => ['usd' => 45000.12]]);
     });
 
@@ -98,6 +98,8 @@ it('returns crypto prices for given ids', function () {
         ->assertJson([
             'currency' => 'usd',
             'prices' => ['bitcoin' => 45000.12],
+            'reference_currency' => 'usd',
+            'reference_prices' => ['bitcoin' => 45000.12],
         ]);
 });
 
@@ -126,8 +128,8 @@ it('returns crypto prices in user currency', function () {
 
     $this->mock(CoinGeckoClient::class, function ($mock) {
         $mock->shouldReceive('getPrices')
-            ->with(['bitcoin'], 'chf')
-            ->andReturn(['bitcoin' => ['chf' => 42000.50]]);
+            ->with(['bitcoin'], ['usd', 'chf'])
+            ->andReturn(['bitcoin' => ['usd' => 50000.0, 'chf' => 42000.50]]);
     });
 
     $this->withToken('valid-token')
@@ -136,6 +138,8 @@ it('returns crypto prices in user currency', function () {
         ->assertJson([
             'currency' => 'chf',
             'prices' => ['bitcoin' => 42000.50],
+            'reference_currency' => 'usd',
+            'reference_prices' => ['bitcoin' => 50000.0],
         ]);
 });
 

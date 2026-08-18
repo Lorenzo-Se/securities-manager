@@ -5,12 +5,16 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePortfolioRequest;
 use App\Models\Portfolio;
+use App\Services\Portfolio\PortfolioCostBasisCalculator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 class PortfolioController extends Controller
 {
+    public function __construct(
+        private readonly PortfolioCostBasisCalculator $costBasisCalculator,
+    ) {}
     #[OA\Get(
         path: '/portfolios',
         operationId: 'listPortfolios',
@@ -151,6 +155,8 @@ class PortfolioController extends Controller
      */
     private function formatPortfolio(Portfolio $portfolio): array
     {
+        $costBasisUsd = $this->costBasisCalculator->calculate($portfolio->movements);
+
         return [
             'id' => $portfolio->id,
             'name' => $portfolio->name,
@@ -158,6 +164,7 @@ class PortfolioController extends Controller
             'crypto_symbol' => $portfolio->crypto_symbol,
             'crypto_name' => $portfolio->crypto_name,
             'balance' => $portfolio->balance,
+            'cost_basis_usd' => $costBasisUsd,
             'created_at' => $portfolio->created_at?->toIso8601String(),
             'updated_at' => $portfolio->updated_at?->toIso8601String(),
         ];

@@ -613,6 +613,7 @@
                     "crypto_symbol",
                     "crypto_name",
                     "balance",
+                    "cost_basis_usd",
                     "created_at",
                     "updated_at"
                 ],
@@ -641,6 +642,11 @@
                         "type": "string",
                         "example": "1.25000000"
                     },
+                    "cost_basis_usd": {
+                        "type": "string",
+                        "example": "50000.00000000",
+                        "nullable": true
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time"
@@ -657,6 +663,7 @@
                     "id",
                     "type",
                     "amount",
+                    "unit_price_usd",
                     "occurred_at",
                     "created_at",
                     "updated_at"
@@ -677,6 +684,11 @@
                     "amount": {
                         "type": "string",
                         "example": "0.50000000"
+                    },
+                    "unit_price_usd": {
+                        "type": "string",
+                        "example": "45000.12000000",
+                        "nullable": true
                     },
                     "occurred_at": {
                         "type": "string",
@@ -730,7 +742,9 @@
             "CryptoPrices": {
                 "required": [
                     "currency",
-                    "prices"
+                    "prices",
+                    "reference_currency",
+                    "reference_prices"
                 ],
                 "properties": {
                     "currency": {
@@ -741,6 +755,20 @@
                         "type": "object",
                         "example": {
                             "bitcoin": 45000.12
+                        },
+                        "additionalProperties": {
+                            "type": "number",
+                            "format": "float"
+                        }
+                    },
+                    "reference_currency": {
+                        "type": "string",
+                        "example": "usd"
+                    },
+                    "reference_prices": {
+                        "type": "object",
+                        "example": {
+                            "bitcoin": 50000
                         },
                         "additionalProperties": {
                             "type": "number",

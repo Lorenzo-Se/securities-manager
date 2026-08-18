@@ -2,6 +2,7 @@
 
 namespace App\Services\Crypto;
 
+use DateTimeInterface;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -52,9 +53,10 @@ class CoinGeckoClient
 
     /**
      * @param  list<string>  $ids
+     * @param  list<string>|string|null  $vsCurrencies
      * @return array<string, array<string, float>>
      */
-    public function getPrices(array $ids, ?string $vsCurrency = null): array
+    public function getPrices(array $ids, array|string|null $vsCurrencies = null): array
     {
         $ids = array_values(array_unique(array_filter($ids)));
 
@@ -62,14 +64,14 @@ class CoinGeckoClient
             return [];
         }
 
-        $vsCurrency = strtolower($vsCurrency ?? config('crypto.coingecko.default_currency'));
-        $cacheKey = 'coingecko.prices.'.md5(implode(',', $ids).'.'.$vsCurrency);
+        $currencies = $this->normalizeVsCurrencies($vsCurrencies);
+        $cacheKey = 'coingecko.prices.'.md5(implode(',', $ids).'.'.implode(',', $currencies));
         $ttl = config('crypto.coingecko.cache.prices_ttl');
 
-        return Cache::remember($cacheKey, $ttl, function () use ($ids, $vsCurrency): array {
+        return Cache::remember($cacheKey, $ttl, function () use ($ids, $currencies): array {
             $response = $this->request()->get('/simple/price', [
                 'ids' => implode(',', $ids),
-                'vs_currencies' => $vsCurrency,
+                'vs_currencies' => implode(',', $currencies),
             ]);
 
             if (! $response->successful()) {
@@ -81,6 +83,58 @@ class CoinGeckoClient
 
             return $prices;
         });
+    }
+
+    public function getHistoricalPrice(
+        string $id,
+        DateTimeInterface $date,
+        string $vsCurrency = 'usd',
+    ): float {
+        $vsCurrency = strtolower($vsCurrency);
+        $dateKey = $date->format('d-m-Y');
+        $cacheKey = 'coingecko.history.'.md5($id.'.'.$dateKey.'.'.$vsCurrency);
+        $ttl = config('crypto.coingecko.cache.prices_ttl');
+
+        return Cache::remember($cacheKey, $ttl, function () use ($id, $dateKey, $vsCurrency): float {
+            $response = $this->request()->get("/coins/{$id}/history", [
+                'date' => $dateKey,
+                'localization' => 'false',
+            ]);
+
+            if (! $response->successful()) {
+                throw new RuntimeException('Failed to fetch historical price from CoinGecko.');
+            }
+
+            $price = $response->json("market_data.current_price.{$vsCurrency}");
+
+            if (! is_numeric($price)) {
+                throw new RuntimeException('Historical price missing from CoinGecko response.');
+            }
+
+            return (float) $price;
+        });
+    }
+
+    /**
+     * @param  list<string>|string|null  $vsCurrencies
+     * @return list<string>
+     */
+    private function normalizeVsCurrencies(array|string|null $vsCurrencies): array
+    {
+        if ($vsCurrencies === null) {
+            return [strtolower((string) config('crypto.coingecko.default_currency'))];
+        }
+
+        if (is_string($vsCurrencies)) {
+            return [strtolower($vsCurrencies)];
+        }
+
+        $normalized = array_values(array_unique(array_map(
+            static fn (string $currency): string => strtolower($currency),
+            array_filter($vsCurrencies),
+        )));
+
+        return $normalized === [] ? ['usd'] : $normalized;
     }
 
     /**

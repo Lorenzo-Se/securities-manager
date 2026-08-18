@@ -6,12 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePortfolioMovementRequest;
 use App\Models\Portfolio;
 use App\Models\PortfolioMovement;
+use App\Services\Crypto\CoinGeckoClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 class PortfolioMovementController extends Controller
 {
+    public function __construct(
+        private readonly CoinGeckoClient $coinGecko,
+    ) {}
     #[OA\Get(
         path: '/portfolios/{portfolio}/movements',
         operationId: 'listPortfolioMovements',
@@ -95,10 +99,18 @@ class PortfolioMovementController extends Controller
     ): JsonResponse {
         $this->ensurePortfolioOwnership($request, $portfolio);
 
+        $occurredAt = $request->date('occurred_at');
+        $unitPriceUsd = $this->coinGecko->getHistoricalPrice(
+            $portfolio->crypto_id,
+            $occurredAt,
+            'usd',
+        );
+
         $movement = $portfolio->movements()->create([
             'type' => $request->string('type')->toString(),
             'amount' => $request->string('amount')->toString(),
-            'occurred_at' => $request->date('occurred_at'),
+            'unit_price_usd' => number_format($unitPriceUsd, 8, '.', ''),
+            'occurred_at' => $occurredAt,
         ]);
 
         return response()->json($this->formatMovement($movement), 201);
@@ -162,6 +174,9 @@ class PortfolioMovementController extends Controller
             'id' => $movement->id,
             'type' => $movement->type,
             'amount' => number_format((float) $movement->amount, 8, '.', ''),
+            'unit_price_usd' => $movement->unit_price_usd !== null
+                ? number_format((float) $movement->unit_price_usd, 8, '.', '')
+                : null,
             'occurred_at' => $movement->occurred_at?->toIso8601String(),
             'created_at' => $movement->created_at?->toIso8601String(),
             'updated_at' => $movement->updated_at?->toIso8601String(),
