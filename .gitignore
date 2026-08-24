@@ -1,0 +1,8 @@
+.DS_Store
+.cursor/
+.vscode/
+.git-monorepo-migration/
+
+# Root env overrides (app-specific env lives in backend/.env and frontend/.env.local)
+.env
+.env.*

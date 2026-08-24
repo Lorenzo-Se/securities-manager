@@ -1,0 +1,170 @@
+# Securities Manager
+
+Monorepo für die Full-Stack-Anwendung zur Verwaltung von Wertpapier-Portfolios: Laravel-API, Next.js-Frontend und Keycloak-Authentifizierung.
+
+## Stack
+
+| Bereich | Technologie |
+|---------|-------------|
+| Frontend | Next.js 16, React, Auth.js, shadcn/ui, Tailwind CSS |
+| Backend | Laravel 13, PostgreSQL, L5-Swagger |
+| Auth | Keycloak 26 (OIDC / JWT) |
+| Infrastruktur | Docker Compose (PostgreSQL + Keycloak) |
+
+## Voraussetzungen
+
+- Docker & Docker Compose
+- PHP 8.3+ und Composer
+- Node.js 20+ und npm
+
+## Schnellstart
+
+### 1. Infrastruktur starten
+
+```bash
+docker compose up -d
+```
+
+| Dienst | URL | Zugangsdaten |
+|--------|-----|--------------|
+| Keycloak Admin | http://localhost:8080 | `admin` / `admin` |
+| PostgreSQL | `localhost:5432` | User `keycloak`, DB `keycloak` |
+
+**Test-User:** `demo@example.com` / `demo`  
+**Realm:** `securities-manager` · **Client:** `frontend` (Public, PKCE)
+
+Der Realm wird beim ersten Start aus [`keycloak/realm-securities-manager.json`](keycloak/realm-securities-manager.json) importiert.
+
+### 2. Backend
+
+```bash
+cd backend
+cp .env.example .env   # falls noch nicht vorhanden
+composer install
+php artisan key:generate
+php artisan migrate
+php artisan serve
+```
+
+Wichtige Variablen in `backend/.env`:
+
+```env
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=securities_manager
+DB_USERNAME=laravel
+DB_PASSWORD=laravel
+
+KEYCLOAK_BASE_URL=http://localhost:8080
+KEYCLOAK_REALM=securities-manager
+KEYCLOAK_CLIENT_ID=frontend
+FRONTEND_URL=http://localhost:3000
+```
+
+- API: http://localhost:8000/api
+- Swagger: http://localhost:8000/api/documentation
+
+Falls die Laravel-Datenbank noch fehlt (ältere Docker-Volumes):
+
+```bash
+docker compose exec postgres psql -U keycloak -d keycloak -c \
+  "CREATE USER laravel WITH PASSWORD 'laravel'; CREATE DATABASE securities_manager OWNER laravel;"
+```
+
+### 3. Frontend
+
+```bash
+cd frontend
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+Wichtige Variablen in `frontend/.env.local`:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000/api
+AUTH_URL=http://localhost:3000
+AUTH_SECRET=<zufälliger-32-zeichen-string>
+AUTH_KEYCLOAK_ID=frontend
+AUTH_KEYCLOAK_ISSUER=http://localhost:8080/realms/securities-manager
+AUTH_TRUST_HOST=true
+```
+
+`AUTH_SECRET` erzeugen: `openssl rand -base64 32`
+
+Frontend: http://localhost:3000
+
+## Projektstruktur
+
+```
+├── docker-compose.yml      # PostgreSQL + Keycloak
+├── docker/postgres/init/   # Init-Skript für securities_manager DB
+├── keycloak/               # Realm-Import
+├── backend/                # Laravel API (Portfolios, Krypto-Preise, Auth)
+└── frontend/               # Next.js App (Portfolios, Einstellungen)
+```
+
+## Authentifizierung
+
+1. **Anmelden** auf der Startseite → Redirect zu Keycloak
+2. Nach Login Session im Frontend
+3. Frontend sendet `Authorization: Bearer <token>` an die API
+4. Laravel validiert das JWT gegen Keycloaks JWKS und legt den User bei Bedarf an
+
+Callback-URL für Auth.js:
+
+`http://localhost:3000/api/auth/callback/keycloak`
+
+## API (Auszug)
+
+| Endpunkt | Auth | Beschreibung |
+|----------|------|--------------|
+| `GET /api/health` | Nein | API-Status |
+| `GET /api/user` | Ja | Aktueller Benutzer |
+| `GET /api/portfolios` | Ja | Portfolios des Users |
+| `GET /api/crypto/prices` | Ja | Krypto-Referenzpreise |
+
+Vollständige Dokumentation: Swagger unter `/api/documentation`.
+
+## Tests
+
+```bash
+# Backend
+cd backend && php artisan test
+
+# Frontend Build
+cd frontend && npm run build
+```
+
+## Fehlerbehebung
+
+### `Invalid parameter: redirect_uri`
+
+`AUTH_URL=http://localhost:3000` in `frontend/.env.local` setzen und in Keycloak unter **Clients → frontend → Valid redirect URIs** eintragen:
+
+`http://localhost:3000/api/auth/callback/keycloak`
+
+Realm neu importieren bei veralteter Konfiguration:
+
+```bash
+docker compose down -v && docker compose up -d
+```
+
+### API gibt `Unauthenticated` trotz Login
+
+Keycloak 26 nutzt standardmäßig **Lightweight Access Tokens** ohne `sub`-Claim. Unter **Clients → frontend → Advanced** → **Always use lightweight access token** auf **OFF** setzen, oder Realm neu importieren.
+
+### Docker startet nicht
+
+Docker Desktop muss laufen, bevor `docker compose up -d` ausgeführt wird.
+
+## Repository-Historie
+
+Dieses Monorepo vereint die bisherigen separaten Repositories:
+
+- `backend/` — Laravel API
+- `frontend/` — Next.js App
+
+Die Commit-Historie beider Projekte ist unter den jeweiligen Pfaden erhalten (`git log -- backend/`, `git log -- frontend/`).
