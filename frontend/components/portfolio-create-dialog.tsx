@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState, useTransition } from "react";
 
+import { searchCryptoCoinsAction } from "@/lib/actions/crypto";
+import { createPortfolioAction } from "@/lib/actions/portfolio";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,13 +16,7 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  getListPortfoliosQueryKey,
-  useCreatePortfolio,
-} from "@/lib/api/generated/portfolio/portfolio";
-import { useListCryptoCoins } from "@/lib/api/generated/crypto/crypto";
 import type { CryptoCoin } from "@/lib/api/generated/models";
-import { useApiEnabled } from "@/hooks/use-api-enabled";
 
 type PortfolioCreateDialogProps = {
   open: boolean;
@@ -32,37 +27,14 @@ export function PortfolioCreateDialog({
   open,
   onOpenChange,
 }: PortfolioCreateDialogProps) {
-  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCoin, setSelectedCoin] = useState<CryptoCoin | null>(null);
+  const [coins, setCoins] = useState<CryptoCoin[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const apiEnabled = useApiEnabled();
-
-  const { data: coinsResponse, isLoading: isLoadingCoins } = useListCryptoCoins(
-    debouncedSearch ? { search: debouncedSearch } : undefined,
-    {
-      query: {
-        enabled: apiEnabled && open,
-      },
-    },
-  );
-
-  const createPortfolio = useCreatePortfolio({
-    mutation: {
-      onSuccess: async () => {
-        await queryClient.invalidateQueries({
-          queryKey: getListPortfoliosQueryKey(),
-        });
-        resetForm();
-        onOpenChange(false);
-      },
-      onError: () => {
-        setError("Portfolio konnte nicht erstellt werden.");
-      },
-    },
-  });
+  const [isSearching, setIsSearching] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -72,14 +44,43 @@ export function PortfolioCreateDialog({
     return () => window.clearTimeout(timeout);
   }, [search]);
 
-  const coins =
-    coinsResponse?.status === 200 ? coinsResponse.data : [];
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadCoins = async () => {
+      setIsSearching(true);
+      const result = await searchCryptoCoinsAction(debouncedSearch);
+
+      if (cancelled) {
+        return;
+      }
+
+      if (result.ok) {
+        setCoins(result.data ?? []);
+      } else {
+        setCoins([]);
+      }
+
+      setIsSearching(false);
+    };
+
+    void loadCoins();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedSearch, open]);
 
   const resetForm = () => {
     setName("");
     setSearch("");
     setDebouncedSearch("");
     setSelectedCoin(null);
+    setCoins([]);
     setError(null);
   };
 
@@ -92,11 +93,19 @@ export function PortfolioCreateDialog({
       return;
     }
 
-    createPortfolio.mutate({
-      data: {
+    startTransition(async () => {
+      const result = await createPortfolioAction({
         name: name.trim(),
         crypto_id: selectedCoin.id,
-      },
+      });
+
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      resetForm();
+      onOpenChange(false);
     });
   };
 
@@ -144,7 +153,7 @@ export function PortfolioCreateDialog({
                 placeholder="Suche nach Name oder Symbol"
               />
               <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-border">
-                {isLoadingCoins ? (
+                {isSearching ? (
                   <div className="flex items-center justify-center py-6">
                     <Spinner />
                   </div>
@@ -214,8 +223,8 @@ export function PortfolioCreateDialog({
             >
               Abbrechen
             </Button>
-            <Button type="submit" disabled={createPortfolio.isPending}>
-              {createPortfolio.isPending ? "Erstelle..." : "Erstellen"}
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Erstelle..." : "Erstellen"}
             </Button>
           </DialogFooter>
         </form>

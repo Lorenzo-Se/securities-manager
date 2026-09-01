@@ -5,25 +5,6 @@
  * OpenAPI-Dokumentation für die Securities Manager API
  * OpenAPI spec version: 1.0.0
  */
-import {
-  useMutation,
-  useQuery
-} from '@tanstack/react-query';
-import type {
-  DataTag,
-  DefinedInitialDataOptions,
-  DefinedUseQueryResult,
-  MutationFunction,
-  QueryClient,
-  QueryFunction,
-  QueryKey,
-  UndefinedInitialDataOptions,
-  UseMutationOptions,
-  UseMutationResult,
-  UseQueryOptions,
-  UseQueryResult
-} from '@tanstack/react-query';
-
 import type {
   CreatePortfolioBody,
   CreatePortfolioMovementBody,
@@ -32,27 +13,6 @@ import type {
 } from '../models';
 
 import { customInstance } from '../../custom-instance';
-import type { ErrorType , BodyType } from '../../custom-instance';
-
-
-type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
-
-
-
-const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
-  const result = { queryKey } as T & { queryKey: K };
-  for (const key of Object.keys(query)) {
-    // The explicit queryKey always wins, matching the previous
-    // `{ ...query, queryKey }` spread where it was set last.
-    if (key === 'queryKey') continue;
-    Object.defineProperty(result, key, {
-      enumerable: true,
-      configurable: true,
-      get: () => (query as Record<string, unknown>)[key],
-    });
-  }
-  return result;
-};
 
 export type listPortfoliosResponse200 = {
   data: Portfolio[]
@@ -94,83 +54,6 @@ export const listPortfolios = async ( options?: Parameters<typeof customInstance
 
   }
 );}
-
-
-
-
-
-export const getListPortfoliosQueryKey = () => {
-    return [
-    `/portfolios`
-    ] as const;
-    }
-
-
-export const getListPortfoliosQueryOptions = <TData = Awaited<ReturnType<typeof listPortfolios>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPortfolios>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getListPortfoliosQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPortfolios>>> = ({ signal }) => listPortfolios({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPortfolios>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListPortfoliosQueryResult = NonNullable<Awaited<ReturnType<typeof listPortfolios>>>
-export type ListPortfoliosQueryError = ErrorType<void>
-
-
-export function useListPortfolios<TData = Awaited<ReturnType<typeof listPortfolios>>, TError = ErrorType<void>>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPortfolios>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listPortfolios>>,
-          TError,
-          Awaited<ReturnType<typeof listPortfolios>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListPortfolios<TData = Awaited<ReturnType<typeof listPortfolios>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPortfolios>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listPortfolios>>,
-          TError,
-          Awaited<ReturnType<typeof listPortfolios>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListPortfolios<TData = Awaited<ReturnType<typeof listPortfolios>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPortfolios>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Portfolios des Benutzers abrufen
- */
-
-export function useListPortfolios<TData = Awaited<ReturnType<typeof listPortfolios>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPortfolios>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getListPortfoliosQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
 
 
 export type createPortfolioResponse201 = {
@@ -220,54 +103,7 @@ export const createPortfolio = async (createPortfolioBody: CreatePortfolioBody, 
 );}
 
 
-
-
-
-export const getCreatePortfolioMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPortfolio>>, TError,{data: BodyType<CreatePortfolioBody>}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof createPortfolio>>, TError,{data: BodyType<CreatePortfolioBody>}, TContext> => {
-
-const mutationKey = ['createPortfolio'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPortfolio>>, {data: BodyType<CreatePortfolioBody>}> = (props) => {
-          const {data} = props ?? {};
-
-          return  createPortfolio(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreatePortfolioMutationResult = NonNullable<Awaited<ReturnType<typeof createPortfolio>>>
-    export type CreatePortfolioMutationBody = BodyType<CreatePortfolioBody>
-    export type CreatePortfolioMutationError = ErrorType<void>
-
-    /**
- * @summary Neues Portfolio erstellen
- */
-export const useCreatePortfolio = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPortfolio>>, TError,{data: BodyType<CreatePortfolioBody>}, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof createPortfolio>>,
-        TError,
-        {data: BodyType<CreatePortfolioBody>},
-        TContext
-      > => {
-      return useMutation(getCreatePortfolioMutationOptions(options), queryClient);
-    }
-    export type getPortfolioResponse200 = {
+export type getPortfolioResponse200 = {
   data: Portfolio
   status: 200
 }
@@ -312,83 +148,6 @@ export const getPortfolio = async (portfolio: number, options?: Parameters<typeo
 
   }
 );}
-
-
-
-
-
-export const getGetPortfolioQueryKey = (portfolio: number,) => {
-    return [
-    `/portfolios/${portfolio}`
-    ] as const;
-    }
-
-
-export const getGetPortfolioQueryOptions = <TData = Awaited<ReturnType<typeof getPortfolio>>, TError = ErrorType<void>>(portfolio: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPortfolio>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetPortfolioQueryKey(portfolio);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPortfolio>>> = ({ signal }) => getPortfolio(portfolio, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: portfolio !== null && portfolio !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPortfolio>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetPortfolioQueryResult = NonNullable<Awaited<ReturnType<typeof getPortfolio>>>
-export type GetPortfolioQueryError = ErrorType<void>
-
-
-export function useGetPortfolio<TData = Awaited<ReturnType<typeof getPortfolio>>, TError = ErrorType<void>>(
- portfolio: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPortfolio>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getPortfolio>>,
-          TError,
-          Awaited<ReturnType<typeof getPortfolio>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetPortfolio<TData = Awaited<ReturnType<typeof getPortfolio>>, TError = ErrorType<void>>(
- portfolio: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPortfolio>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getPortfolio>>,
-          TError,
-          Awaited<ReturnType<typeof getPortfolio>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetPortfolio<TData = Awaited<ReturnType<typeof getPortfolio>>, TError = ErrorType<void>>(
- portfolio: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPortfolio>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Einzelnes Portfolio abrufen
- */
-
-export function useGetPortfolio<TData = Awaited<ReturnType<typeof getPortfolio>>, TError = ErrorType<void>>(
- portfolio: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPortfolio>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetPortfolioQueryOptions(portfolio,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
 
 
 export type deletePortfolioResponse204 = {
@@ -438,54 +197,7 @@ export const deletePortfolio = async (portfolio: number, options?: Parameters<ty
 );}
 
 
-
-
-
-export const getDeletePortfolioMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePortfolio>>, TError,{portfolio: number}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof deletePortfolio>>, TError,{portfolio: number}, TContext> => {
-
-const mutationKey = ['deletePortfolio'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePortfolio>>, {portfolio: number}> = (props) => {
-          const {portfolio} = props ?? {};
-
-          return  deletePortfolio(portfolio,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DeletePortfolioMutationResult = NonNullable<Awaited<ReturnType<typeof deletePortfolio>>>
-
-    export type DeletePortfolioMutationError = ErrorType<void>
-
-    /**
- * @summary Portfolio löschen
- */
-export const useDeletePortfolio = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePortfolio>>, TError,{portfolio: number}, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof deletePortfolio>>,
-        TError,
-        {portfolio: number},
-        TContext
-      > => {
-      return useMutation(getDeletePortfolioMutationOptions(options), queryClient);
-    }
-    export type listPortfolioMovementsResponse200 = {
+export type listPortfolioMovementsResponse200 = {
   data: PortfolioMovement[]
   status: 200
 }
@@ -530,83 +242,6 @@ export const listPortfolioMovements = async (portfolio: number, options?: Parame
 
   }
 );}
-
-
-
-
-
-export const getListPortfolioMovementsQueryKey = (portfolio: number,) => {
-    return [
-    `/portfolios/${portfolio}/movements`
-    ] as const;
-    }
-
-
-export const getListPortfolioMovementsQueryOptions = <TData = Awaited<ReturnType<typeof listPortfolioMovements>>, TError = ErrorType<void>>(portfolio: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPortfolioMovements>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getListPortfolioMovementsQueryKey(portfolio);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPortfolioMovements>>> = ({ signal }) => listPortfolioMovements(portfolio, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: portfolio !== null && portfolio !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPortfolioMovements>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListPortfolioMovementsQueryResult = NonNullable<Awaited<ReturnType<typeof listPortfolioMovements>>>
-export type ListPortfolioMovementsQueryError = ErrorType<void>
-
-
-export function useListPortfolioMovements<TData = Awaited<ReturnType<typeof listPortfolioMovements>>, TError = ErrorType<void>>(
- portfolio: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPortfolioMovements>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listPortfolioMovements>>,
-          TError,
-          Awaited<ReturnType<typeof listPortfolioMovements>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListPortfolioMovements<TData = Awaited<ReturnType<typeof listPortfolioMovements>>, TError = ErrorType<void>>(
- portfolio: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPortfolioMovements>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listPortfolioMovements>>,
-          TError,
-          Awaited<ReturnType<typeof listPortfolioMovements>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListPortfolioMovements<TData = Awaited<ReturnType<typeof listPortfolioMovements>>, TError = ErrorType<void>>(
- portfolio: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPortfolioMovements>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Buchungen eines Portfolios abrufen
- */
-
-export function useListPortfolioMovements<TData = Awaited<ReturnType<typeof listPortfolioMovements>>, TError = ErrorType<void>>(
- portfolio: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPortfolioMovements>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getListPortfolioMovementsQueryOptions(portfolio,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
 
 
 export type createPortfolioMovementResponse201 = {
@@ -662,54 +297,7 @@ export const createPortfolioMovement = async (portfolio: number,
 );}
 
 
-
-
-
-export const getCreatePortfolioMovementMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPortfolioMovement>>, TError,{portfolio: number;data: BodyType<CreatePortfolioMovementBody>}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof createPortfolioMovement>>, TError,{portfolio: number;data: BodyType<CreatePortfolioMovementBody>}, TContext> => {
-
-const mutationKey = ['createPortfolioMovement'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPortfolioMovement>>, {portfolio: number;data: BodyType<CreatePortfolioMovementBody>}> = (props) => {
-          const {portfolio,data} = props ?? {};
-
-          return  createPortfolioMovement(portfolio,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreatePortfolioMovementMutationResult = NonNullable<Awaited<ReturnType<typeof createPortfolioMovement>>>
-    export type CreatePortfolioMovementMutationBody = BodyType<CreatePortfolioMovementBody>
-    export type CreatePortfolioMovementMutationError = ErrorType<void>
-
-    /**
- * @summary Neue Buchung anlegen
- */
-export const useCreatePortfolioMovement = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPortfolioMovement>>, TError,{portfolio: number;data: BodyType<CreatePortfolioMovementBody>}, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof createPortfolioMovement>>,
-        TError,
-        {portfolio: number;data: BodyType<CreatePortfolioMovementBody>},
-        TContext
-      > => {
-      return useMutation(getCreatePortfolioMovementMutationOptions(options), queryClient);
-    }
-    export type deletePortfolioMovementResponse204 = {
+export type deletePortfolioMovementResponse204 = {
   data: void
   status: 204
 }
@@ -758,50 +346,3 @@ export const deletePortfolioMovement = async (portfolio: number,
 );}
 
 
-
-
-
-export const getDeletePortfolioMovementMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePortfolioMovement>>, TError,{portfolio: number;movement: number}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof deletePortfolioMovement>>, TError,{portfolio: number;movement: number}, TContext> => {
-
-const mutationKey = ['deletePortfolioMovement'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePortfolioMovement>>, {portfolio: number;movement: number}> = (props) => {
-          const {portfolio,movement} = props ?? {};
-
-          return  deletePortfolioMovement(portfolio,movement,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DeletePortfolioMovementMutationResult = NonNullable<Awaited<ReturnType<typeof deletePortfolioMovement>>>
-
-    export type DeletePortfolioMovementMutationError = ErrorType<void>
-
-    /**
- * @summary Buchung löschen
- */
-export const useDeletePortfolioMovement = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePortfolioMovement>>, TError,{portfolio: number;movement: number}, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof deletePortfolioMovement>>,
-        TError,
-        {portfolio: number;movement: number},
-        TContext
-      > => {
-      return useMutation(getDeletePortfolioMovementMutationOptions(options), queryClient);
-    }

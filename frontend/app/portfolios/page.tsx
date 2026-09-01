@@ -1,5 +1,31 @@
 import { PortfoliosPageContent } from "@/components/portfolios-page-content";
+import { getCryptoPrices } from "@/lib/api/generated/crypto/crypto";
+import type { CryptoPrices, GetAuthenticatedUser200, Portfolio } from "@/lib/api/generated/models";
+import { listPortfolios } from "@/lib/api/generated/portfolio/portfolio";
+import { getAuthenticatedUser } from "@/lib/api/generated/user/user";
+import { unwrap } from "@/lib/api/unwrap";
 
-export default function PortfoliosPage() {
-  return <PortfoliosPageContent />;
+export default async function PortfoliosPage() {
+  const [portfolios, user] = await Promise.all([
+    listPortfolios().then((response) => unwrap<Portfolio[]>(response)),
+    getAuthenticatedUser().then((response) =>
+      unwrap<GetAuthenticatedUser200>(response),
+    ),
+  ]);
+
+  const cryptoIds = portfolios.map((portfolio) => portfolio.crypto_id).join(",");
+  const prices =
+    cryptoIds.length > 0
+      ? await getCryptoPrices({ ids: cryptoIds }).then((response) =>
+          unwrap<CryptoPrices>(response),
+        )
+      : null;
+
+  return (
+    <PortfoliosPageContent
+      portfolios={portfolios}
+      user={user}
+      prices={prices}
+    />
+  );
 }

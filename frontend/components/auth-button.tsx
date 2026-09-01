@@ -2,13 +2,19 @@
 
 import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
 export function AuthButton() {
   const { data: session, status } = useSession();
+  const [mounted, setMounted] = useState(false);
 
-  if (status === "loading") {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (status === "loading" && mounted) {
     return (
       <Button variant="outline" disabled>
         Laden...

@@ -5,25 +5,6 @@
  * OpenAPI-Dokumentation für die Securities Manager API
  * OpenAPI spec version: 1.0.0
  */
-import {
-  useMutation,
-  useQuery
-} from '@tanstack/react-query';
-import type {
-  DataTag,
-  DefinedInitialDataOptions,
-  DefinedUseQueryResult,
-  MutationFunction,
-  QueryClient,
-  QueryFunction,
-  QueryKey,
-  UndefinedInitialDataOptions,
-  UseMutationOptions,
-  UseMutationResult,
-  UseQueryOptions,
-  UseQueryResult
-} from '@tanstack/react-query';
-
 import type {
   GetAuthenticatedUser200,
   UpdateAuthenticatedUser200,
@@ -31,27 +12,6 @@ import type {
 } from '../models';
 
 import { customInstance } from '../../custom-instance';
-import type { ErrorType , BodyType } from '../../custom-instance';
-
-
-type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
-
-
-
-const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
-  const result = { queryKey } as T & { queryKey: K };
-  for (const key of Object.keys(query)) {
-    // The explicit queryKey always wins, matching the previous
-    // `{ ...query, queryKey }` spread where it was set last.
-    if (key === 'queryKey') continue;
-    Object.defineProperty(result, key, {
-      enumerable: true,
-      configurable: true,
-      get: () => (query as Record<string, unknown>)[key],
-    });
-  }
-  return result;
-};
 
 export type getAuthenticatedUserResponse200 = {
   data: GetAuthenticatedUser200
@@ -94,83 +54,6 @@ export const getAuthenticatedUser = async ( options?: Parameters<typeof customIn
 
   }
 );}
-
-
-
-
-
-export const getGetAuthenticatedUserQueryKey = () => {
-    return [
-    `/user`
-    ] as const;
-    }
-
-
-export const getGetAuthenticatedUserQueryOptions = <TData = Awaited<ReturnType<typeof getAuthenticatedUser>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthenticatedUser>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetAuthenticatedUserQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAuthenticatedUser>>> = ({ signal }) => getAuthenticatedUser({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAuthenticatedUser>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetAuthenticatedUserQueryResult = NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>>
-export type GetAuthenticatedUserQueryError = ErrorType<void>
-
-
-export function useGetAuthenticatedUser<TData = Awaited<ReturnType<typeof getAuthenticatedUser>>, TError = ErrorType<void>>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthenticatedUser>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getAuthenticatedUser>>,
-          TError,
-          Awaited<ReturnType<typeof getAuthenticatedUser>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetAuthenticatedUser<TData = Awaited<ReturnType<typeof getAuthenticatedUser>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthenticatedUser>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getAuthenticatedUser>>,
-          TError,
-          Awaited<ReturnType<typeof getAuthenticatedUser>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetAuthenticatedUser<TData = Awaited<ReturnType<typeof getAuthenticatedUser>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthenticatedUser>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Aktuellen Benutzer abrufen
- */
-
-export function useGetAuthenticatedUser<TData = Awaited<ReturnType<typeof getAuthenticatedUser>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthenticatedUser>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetAuthenticatedUserQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
 
 
 export type updateAuthenticatedUserResponse200 = {
@@ -220,50 +103,3 @@ export const updateAuthenticatedUser = async (updateAuthenticatedUserBody: Updat
 );}
 
 
-
-
-
-export const getUpdateAuthenticatedUserMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAuthenticatedUser>>, TError,{data: BodyType<UpdateAuthenticatedUserBody>}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof updateAuthenticatedUser>>, TError,{data: BodyType<UpdateAuthenticatedUserBody>}, TContext> => {
-
-const mutationKey = ['updateAuthenticatedUser'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAuthenticatedUser>>, {data: BodyType<UpdateAuthenticatedUserBody>}> = (props) => {
-          const {data} = props ?? {};
-
-          return  updateAuthenticatedUser(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type UpdateAuthenticatedUserMutationResult = NonNullable<Awaited<ReturnType<typeof updateAuthenticatedUser>>>
-    export type UpdateAuthenticatedUserMutationBody = BodyType<UpdateAuthenticatedUserBody>
-    export type UpdateAuthenticatedUserMutationError = ErrorType<void>
-
-    /**
- * @summary Benutzereinstellungen aktualisieren
- */
-export const useUpdateAuthenticatedUser = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAuthenticatedUser>>, TError,{data: BodyType<UpdateAuthenticatedUserBody>}, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof updateAuthenticatedUser>>,
-        TError,
-        {data: BodyType<UpdateAuthenticatedUserBody>},
-        TContext
-      > => {
-      return useMutation(getUpdateAuthenticatedUserMutationOptions(options), queryClient);
-    }

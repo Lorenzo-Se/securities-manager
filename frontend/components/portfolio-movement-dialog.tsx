@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useState, useTransition } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { ChevronDownIcon } from "lucide-react";
 
+import { createPortfolioMovementAction } from "@/lib/actions/movement";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -23,12 +23,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  getGetPortfolioQueryKey,
-  getListPortfolioMovementsQueryKey,
-  getListPortfoliosQueryKey,
-  useCreatePortfolioMovement,
-} from "@/lib/api/generated/portfolio/portfolio";
 import type { CreatePortfolioMovementBodyType } from "@/lib/api/generated/models";
 import { cn } from "@/lib/utils";
 
@@ -69,50 +63,13 @@ export function PortfolioMovementDialog({
   open,
   onOpenChange,
 }: PortfolioMovementDialogProps) {
-  const queryClient = useQueryClient();
   const [type, setType] = useState<CreatePortfolioMovementBodyType>("deposit");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState<Date | undefined>(() => getDefaultDateTime().date);
   const [time, setTime] = useState(() => getDefaultDateTime().time);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const createMovement = useCreatePortfolioMovement({
-    mutation: {
-      onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: getListPortfolioMovementsQueryKey(portfolioId),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: getGetPortfolioQueryKey(portfolioId),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: getListPortfoliosQueryKey(),
-          }),
-        ]);
-        resetForm();
-        onOpenChange(false);
-      },
-      onError: (mutationError) => {
-        const info = mutationError.info as
-          | { message?: string; errors?: Record<string, string[]> }
-          | undefined;
-
-        if (info?.errors?.amount?.[0]) {
-          setError(info.errors.amount[0]);
-          return;
-        }
-
-        if (info?.errors?.occurred_at?.[0]) {
-          setError(info.errors.occurred_at[0]);
-          return;
-        }
-
-        setError("Buchung konnte nicht gespeichert werden.");
-      },
-    },
-  });
+  const [isPending, startTransition] = useTransition();
 
   const resetForm = () => {
     const defaults = getDefaultDateTime();
@@ -155,13 +112,30 @@ export function PortfolioMovementDialog({
       return;
     }
 
-    createMovement.mutate({
-      portfolio: portfolioId,
-      data: {
+    startTransition(async () => {
+      const result = await createPortfolioMovementAction(portfolioId, {
         type,
         amount: amount.trim(),
         occurred_at: occurredAtDate.toISOString(),
-      },
+      });
+
+      if (!result.ok) {
+        if (result.fieldErrors?.amount?.[0]) {
+          setError(result.fieldErrors.amount[0]);
+          return;
+        }
+
+        if (result.fieldErrors?.occurred_at?.[0]) {
+          setError(result.fieldErrors.occurred_at[0]);
+          return;
+        }
+
+        setError(result.error);
+        return;
+      }
+
+      resetForm();
+      onOpenChange(false);
     });
   };
 
@@ -285,8 +259,8 @@ export function PortfolioMovementDialog({
             >
               Abbrechen
             </Button>
-            <Button type="submit" disabled={createMovement.isPending}>
-              {createMovement.isPending ? "Speichere..." : "Speichern"}
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Speichere..." : "Speichern"}
             </Button>
           </DialogFooter>
         </form>

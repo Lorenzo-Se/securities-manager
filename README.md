@@ -31,9 +31,19 @@ docker compose up -d
 | PostgreSQL | `localhost:5432` | User `keycloak`, DB `keycloak` |
 
 **Test-User:** `demo@example.com` / `demo`  
-**Realm:** `securities-manager` · **Client:** `frontend` (Public, PKCE)
+**Realm:** `securities-manager` · **Client:** `frontend` (Confidential, PKCE)
 
 Der Realm wird beim ersten Start aus [`keycloak/realm-securities-manager.json`](keycloak/realm-securities-manager.json) importiert.
+
+Falls Keycloak bereits mit einem älteren Realm läuft (z. B. nach Änderung am Client-Typ), Volume zurücksetzen und neu importieren:
+
+```bash
+docker compose down
+docker volume rm securities-manager-old_keycloak_postgres_data
+docker compose up -d
+```
+
+Danach erneut einloggen — bestehende Sessions sind ungültig.
 
 ### 2. Backend
 
@@ -84,13 +94,18 @@ npm run dev
 Wichtige Variablen in `frontend/.env.local`:
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000/api
+API_URL=http://localhost:8000/api
 AUTH_URL=http://localhost:3000
 AUTH_SECRET=<zufälliger-32-zeichen-string>
 AUTH_KEYCLOAK_ID=frontend
+AUTH_KEYCLOAK_SECRET=frontend-dev-secret
 AUTH_KEYCLOAK_ISSUER=http://localhost:8080/realms/securities-manager
 AUTH_TRUST_HOST=true
 ```
+
+`API_URL` ist server-only und wird für SSR-Datenabrufe sowie Server Actions genutzt. Der Browser kommuniziert nicht direkt mit dem Laravel-Backend.
+
+`AUTH_KEYCLOAK_SECRET` muss dem Client-Secret in Keycloak entsprechen (lokal: `frontend-dev-secret` aus dem Realm-Import). Nur serverseitig setzen, nie als `NEXT_PUBLIC_*`.
 
 `AUTH_SECRET` erzeugen: `openssl rand -base64 32`
 

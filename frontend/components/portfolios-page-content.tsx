@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { useQueryClient } from "@tanstack/react-query";
-import { useSession } from "next-auth/react";
 import { Trash2Icon, WalletIcon } from "lucide-react";
 
+import { deletePortfolioAction } from "@/lib/actions/portfolio";
 import { PortfolioCreateDialog } from "@/components/portfolio-create-dialog";
 import { AuthButton } from "@/components/auth-button";
 import {
@@ -35,16 +34,11 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Spinner } from "@/components/ui/spinner";
-import { useGetCryptoPrices } from "@/lib/api/generated/crypto/crypto";
-import {
-  getListPortfoliosQueryKey,
-  useDeletePortfolio,
-  useListPortfolios,
-} from "@/lib/api/generated/portfolio/portfolio";
-import { useGetAuthenticatedUser } from "@/lib/api/generated/user/user";
-import type { Portfolio } from "@/lib/api/generated/models";
-import { useApiEnabled } from "@/hooks/use-api-enabled";
+import type {
+  CryptoPrices,
+  GetAuthenticatedUser200,
+  Portfolio,
+} from "@/lib/api/generated/models";
 import { createPriceFormatter } from "@/lib/format-price";
 import {
   calculatePortfolioPerformance,
@@ -52,35 +46,25 @@ import {
   getProfitToneClass,
 } from "@/lib/portfolio-performance";
 
+type PortfoliosPageContentProps = {
+  portfolios: Portfolio[];
+  user: GetAuthenticatedUser200;
+  prices: CryptoPrices | null;
+};
+
 function PortfolioCard({
   portfolio,
   priceUser,
   priceUsd,
-  isPriceLoading,
   formatPrice,
 }: {
   portfolio: Portfolio;
   priceUser?: number;
   priceUsd?: number;
-  isPriceLoading: boolean;
   formatPrice: (value: number) => string;
 }) {
-  const queryClient = useQueryClient();
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const deletePortfolio = useDeletePortfolio({
-    mutation: {
-      onSuccess: async () => {
-        await queryClient.invalidateQueries({
-          queryKey: getListPortfoliosQueryKey(),
-        });
-        setIsDeleting(false);
-      },
-      onError: () => {
-        setIsDeleting(false);
-      },
-    },
-  });
+  const [isPending, startTransition] = useTransition();
 
   const performance = calculatePortfolioPerformance({
     balance: Number(portfolio.balance),
@@ -91,6 +75,16 @@ function PortfolioCard({
     priceUser,
     priceUsd,
   });
+
+  const handleDelete = () => {
+    setIsDeleting(true);
+    startTransition(async () => {
+      const result = await deletePortfolioAction(portfolio.id);
+      if (!result.ok) {
+        setIsDeleting(false);
+      }
+    });
+  };
 
   return (
     <Card className="transition-colors hover:border-foreground/20">
@@ -111,7 +105,7 @@ function PortfolioCard({
               <Button
                 variant="outline"
                 size="icon-sm"
-                disabled={isDeleting || deletePortfolio.isPending}
+                disabled={isDeleting || isPending}
               />
             }
           >
@@ -127,13 +121,7 @@ function PortfolioCard({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
-                onClick={() => {
-                  setIsDeleting(true);
-                  deletePortfolio.mutate({ portfolio: portfolio.id });
-                }}
-              >
+              <AlertDialogAction variant="destructive" onClick={handleDelete}>
                 Löschen
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -144,20 +132,12 @@ function PortfolioCard({
         <div>
           <p className="text-sm text-muted-foreground">Portfoliowert</p>
           <p className="text-2xl font-semibold tracking-tight">
-            {isPriceLoading ? (
-              <Spinner className="size-5" />
-            ) : performance !== null ? (
-              formatPrice(performance.portfolioValue)
-            ) : (
-              "—"
-            )}
+            {performance !== null ? formatPrice(performance.portfolioValue) : "—"}
           </p>
         </div>
         <div>
           <p className="text-sm text-muted-foreground">Erfolg</p>
-          {isPriceLoading ? (
-            <Spinner className="size-5" />
-          ) : performance !== null ? (
+          {performance !== null ? (
             <div className="space-y-1">
               <p
                 className={`text-2xl font-semibold tracking-tight ${getProfitToneClass(performance.profitAmount)}`}
@@ -185,58 +165,17 @@ function PortfolioCard({
   );
 }
 
-export function PortfoliosPageContent() {
+export function PortfoliosPageContent({
+  portfolios,
+  user,
+  prices,
+}: PortfoliosPageContentProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const apiEnabled = useApiEnabled();
-  const { status: sessionStatus } = useSession();
-
-  const {
-    data: portfoliosResponse,
-    isLoading: isLoadingPortfolios,
-    isError,
-  } = useListPortfolios({
-    query: {
-      enabled: apiEnabled,
-    },
-  });
-
-  const { data: userResponse } = useGetAuthenticatedUser({
-    query: {
-      enabled: apiEnabled,
-    },
-  });
-
-  const userCurrency =
-    userResponse?.status === 200 ? userResponse.data.currency : "usd";
-
-  const portfolios =
-    portfoliosResponse?.status === 200 ? portfoliosResponse.data : [];
-
-  const cryptoIds = useMemo(
-    () => portfolios.map((portfolio) => portfolio.crypto_id).join(","),
-    [portfolios],
-  );
-
-  const { data: pricesResponse, isLoading: isPricesLoading } =
-    useGetCryptoPrices(
-      { ids: cryptoIds },
-      {
-        query: {
-          enabled: apiEnabled && cryptoIds.length > 0,
-        },
-      },
-    );
-
-  const pricesData =
-    pricesResponse?.status === 200 ? pricesResponse.data : undefined;
 
   const formatPrice = useMemo(
-    () => createPriceFormatter(userCurrency).format,
-    [userCurrency],
+    () => createPriceFormatter(user.currency).format,
+    [user.currency],
   );
-
-  const isLoading =
-    sessionStatus === "loading" || (apiEnabled && isLoadingPortfolios);
 
   return (
     <div className="min-h-full bg-zinc-50 dark:bg-black">
@@ -267,20 +206,7 @@ export function PortfoliosPageContent() {
           </Button>
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Spinner className="size-6" />
-          </div>
-        ) : isError ? (
-          <Empty className="border">
-            <EmptyHeader>
-              <EmptyTitle>Portfolios konnten nicht geladen werden</EmptyTitle>
-              <EmptyDescription>
-                Bitte versuche es später erneut.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : portfolios.length === 0 ? (
+        {portfolios.length === 0 ? (
           <Empty className="border">
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -301,9 +227,8 @@ export function PortfoliosPageContent() {
               <PortfolioCard
                 key={portfolio.id}
                 portfolio={portfolio}
-                priceUser={pricesData?.prices[portfolio.crypto_id]}
-                priceUsd={pricesData?.reference_prices[portfolio.crypto_id]}
-                isPriceLoading={isPricesLoading}
+                priceUser={prices?.prices[portfolio.crypto_id]}
+                priceUsd={prices?.reference_prices[portfolio.crypto_id]}
                 formatPrice={formatPrice}
               />
             ))}

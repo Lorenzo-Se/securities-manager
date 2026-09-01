@@ -7,7 +7,7 @@ export default defineConfig({
       mode: "tags-split",
       target: "lib/api/generated",
       schemas: "lib/api/generated/models",
-      client: "react-query",
+      client: "fetch",
       httpClient: "fetch",
       clean: true,
       override: {

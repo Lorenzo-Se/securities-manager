@@ -2,9 +2,14 @@ import type { JWT } from "next-auth/jwt";
 
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   const issuer = process.env.AUTH_KEYCLOAK_ISSUER;
+  const clientSecret = process.env.AUTH_KEYCLOAK_SECRET;
 
   if (!issuer || !token.refreshToken) {
     return token;
+  }
+
+  if (!clientSecret) {
+    return { ...token, error: "RefreshAccessTokenError" };
   }
 
   try {
@@ -15,6 +20,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
           client_id: process.env.AUTH_KEYCLOAK_ID ?? "frontend",
+          client_secret: clientSecret,
           grant_type: "refresh_token",
           refresh_token: token.refreshToken,
         }),

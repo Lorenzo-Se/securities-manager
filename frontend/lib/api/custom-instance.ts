@@ -1,7 +1,9 @@
-import { getAccessToken } from "./access-token";
+import "server-only";
+
+import { getAccessToken } from "@/lib/auth/get-access-token";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+  process.env.API_URL ?? "http://localhost:8000/api";
 
 export type ErrorType<Error> = Error & {
   status?: number;
@@ -50,7 +52,7 @@ export const customInstance = async <T>(
   url: string,
   { method, params, body, headers, signal }: RequestConfig,
 ): Promise<T> => {
-  const token = getAccessToken();
+  const token = await getAccessToken();
   const requestHeaders: Record<string, string> = {
     Accept: "application/json",
   };
@@ -71,6 +73,7 @@ export const customInstance = async <T>(
     },
     body: body !== undefined ? serializeBody(body) : undefined,
     signal,
+    cache: "no-store",
   });
 
   const contentType = response.headers.get("content-type");
