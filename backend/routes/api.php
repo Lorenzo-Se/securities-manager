@@ -1,9 +1,9 @@
 <?php
 
-use App\Http\Controllers\Api\PortfolioMovementController;
 use App\Http\Controllers\Api\CryptoController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\PortfolioController;
+use App\Http\Controllers\Api\PortfolioMovementController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -17,8 +17,8 @@ Route::middleware('auth.keycloak')->group(function () {
     Route::get('/portfolios', [PortfolioController::class, 'index']);
     Route::post('/portfolios', [PortfolioController::class, 'store']);
     Route::get('/portfolios/{portfolio}', [PortfolioController::class, 'show']);
+    Route::patch('/portfolios/{portfolio}', [PortfolioController::class, 'update']);
+    Route::post('/portfolios/{portfolio}/sync', [PortfolioController::class, 'sync']);
     Route::delete('/portfolios/{portfolio}', [PortfolioController::class, 'destroy']);
     Route::get('/portfolios/{portfolio}/movements', [PortfolioMovementController::class, 'index']);
-    Route::post('/portfolios/{portfolio}/movements', [PortfolioMovementController::class, 'store']);
-    Route::delete('/portfolios/{portfolio}/movements/{movement}', [PortfolioMovementController::class, 'destroy']);
 });

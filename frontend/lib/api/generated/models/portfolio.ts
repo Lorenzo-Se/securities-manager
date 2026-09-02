@@ -5,6 +5,8 @@
  * OpenAPI-Dokumentation für die Securities Manager API
  * OpenAPI spec version: 1.0.0
  */
+import type { PortfolioSyncStatus } from './portfolioSyncStatus';
+import type { PortfolioWalletSourceType } from './portfolioWalletSourceType';
 
 export interface Portfolio {
   id: number;
@@ -12,6 +14,15 @@ export interface Portfolio {
   crypto_id: string;
   crypto_symbol: string;
   crypto_name: string;
+  /** @nullable */
+  wallet_source_type: PortfolioWalletSourceType;
+  /** @nullable */
+  wallet_source: string | null;
+  sync_status: PortfolioSyncStatus;
+  /** @nullable */
+  sync_error?: string | null;
+  /** @nullable */
+  last_synced_at?: string | null;
   balance: string;
   /** @nullable */
   cost_basis_usd: string | null;

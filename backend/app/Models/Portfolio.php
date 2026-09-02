@@ -2,14 +2,17 @@
 
 namespace App\Models;
 
+use App\Enums\SyncStatus;
+use App\Enums\WalletSourceType;
+use App\Support\WalletSourceMasker;
 use Database\Factories\PortfolioFactory;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use DateTimeInterface;
 
 #[Fillable([
     'user_id',
@@ -17,11 +20,31 @@ use DateTimeInterface;
     'crypto_id',
     'crypto_symbol',
     'crypto_name',
+    'wallet_source_type',
+    'wallet_source',
+    'chain_slug',
+    'token_contract',
+    'last_synced_at',
+    'sync_status',
+    'sync_error',
 ])]
 class Portfolio extends Model
 {
     /** @use HasFactory<PortfolioFactory> */
     use HasFactory;
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'wallet_source' => 'encrypted',
+            'wallet_source_type' => WalletSourceType::class,
+            'sync_status' => SyncStatus::class,
+            'last_synced_at' => 'datetime',
+        ];
+    }
 
     public function user(): BelongsTo
     {
@@ -50,6 +73,11 @@ class Portfolio extends Model
             ->sum(fn (PortfolioMovement $movement) => (float) $movement->amount);
 
         return number_format($deposits - $withdrawals, 8, '.', '');
+    }
+
+    public function maskedWalletSource(): ?string
+    {
+        return WalletSourceMasker::mask($this->wallet_source);
     }
 
     /**

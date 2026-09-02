@@ -153,6 +153,27 @@ cd backend && php artisan test
 cd frontend && npm run build
 ```
 
+## On-Chain-Sync
+
+Portfolios importieren Transaktionen automatisch:
+
+- **Bitcoin (Adresse):** [mempool.space](https://mempool.space/api) (kostenlos)
+- **Bitcoin (xpub):** [blockchain.info](https://blockchain.info/api) (kostenlos), Blockchair nur mit API-Key als Fallback
+- **Andere Chains:** Blockchair (API-Key erforderlich)
+
+```env
+# backend/.env
+BLOCKCHAIR_API_KEY=   # nur für Ethereum, Altcoins etc. nötig
+```
+
+Für asynchrone Synchronisation muss der Queue-Worker laufen:
+
+```bash
+cd backend && php artisan queue:work
+```
+
+Geplanter Sync alle 30 Minuten via `php artisan schedule:work` bzw. Cron.
+
 ## Fehlerbehebung
 
 ### `Invalid parameter: redirect_uri`

@@ -14,6 +14,8 @@ export interface PortfolioMovement {
   /** @nullable */
   unit_price_usd: string | null;
   occurred_at: string;
+  /** @nullable */
+  tx_hash?: string | null;
   created_at: string;
   updated_at: string;
 }

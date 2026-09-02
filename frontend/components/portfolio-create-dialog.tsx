@@ -30,6 +30,7 @@ export function PortfolioCreateDialog({
   const [name, setName] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [walletSource, setWalletSource] = useState("");
   const [selectedCoin, setSelectedCoin] = useState<CryptoCoin | null>(null);
   const [coins, setCoins] = useState<CryptoCoin[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -79,10 +80,21 @@ export function PortfolioCreateDialog({
     setName("");
     setSearch("");
     setDebouncedSearch("");
+    setWalletSource("");
     setSelectedCoin(null);
     setCoins([]);
     setError(null);
   };
+
+  const walletSourceLabel =
+    selectedCoin?.wallet_source_type === "xpub"
+      ? "Extended Public Key (xpub)"
+      : "Wallet-Adresse";
+
+  const walletSourcePlaceholder =
+    selectedCoin?.wallet_source_type === "xpub"
+      ? "xpub6CUGRUon..."
+      : "0x... oder Chain-Adresse";
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -93,10 +105,21 @@ export function PortfolioCreateDialog({
       return;
     }
 
+    if (!selectedCoin.sync_supported) {
+      setError("Diese Kryptowährung wird für On-Chain-Sync nicht unterstützt.");
+      return;
+    }
+
+    if (!walletSource.trim()) {
+      setError(`Bitte gib eine ${walletSourceLabel} an.`);
+      return;
+    }
+
     startTransition(async () => {
       const result = await createPortfolioAction({
         name: name.trim(),
         crypto_id: selectedCoin.id,
+        wallet_source: walletSource.trim(),
       });
 
       if (!result.ok) {
@@ -123,7 +146,8 @@ export function PortfolioCreateDialog({
         <DialogHeader>
           <DialogTitle>Portfolio erstellen</DialogTitle>
           <DialogDescription>
-            Gib deinem Portfolio einen Namen und wähle eine Kryptowährung aus.
+            Wähle eine Kryptowährung und gib die Wallet-Quelle für den
+            automatischen Transaktions-Import an.
           </DialogDescription>
         </DialogHeader>
 
@@ -149,6 +173,7 @@ export function PortfolioCreateDialog({
                 onChange={(event) => {
                   setSearch(event.target.value);
                   setSelectedCoin(null);
+                  setWalletSource("");
                 }}
                 placeholder="Suche nach Name oder Symbol"
               />
@@ -164,13 +189,18 @@ export function PortfolioCreateDialog({
                 ) : (
                   coins.map((coin) => {
                     const isSelected = selectedCoin?.id === coin.id;
+                    const isDisabled = !coin.sync_supported;
 
                     return (
                       <button
                         key={coin.id}
                         type="button"
-                        onClick={() => setSelectedCoin(coin)}
-                        className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-muted ${
+                        disabled={isDisabled}
+                        onClick={() => {
+                          setSelectedCoin(coin);
+                          setWalletSource("");
+                        }}
+                        className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 ${
                           isSelected ? "bg-muted font-medium" : ""
                         }`}
                       >
@@ -189,6 +219,11 @@ export function PortfolioCreateDialog({
                         <span className="text-muted-foreground uppercase">
                           {coin.symbol}
                         </span>
+                        {!coin.sync_supported ? (
+                          <span className="text-xs text-muted-foreground">
+                            Kein Sync
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })
@@ -205,10 +240,26 @@ export function PortfolioCreateDialog({
                       className="size-5 rounded-full"
                     />
                   ) : null}
-                  Ausgewählt: {selectedCoin.name} ({selectedCoin.symbol.toUpperCase()})
+                  Ausgewählt: {selectedCoin.name} (
+                  {selectedCoin.symbol.toUpperCase()})
                 </p>
               ) : null}
             </Field>
+
+            {selectedCoin?.sync_supported ? (
+              <Field>
+                <FieldLabel htmlFor="wallet-source">
+                  {walletSourceLabel}
+                </FieldLabel>
+                <Input
+                  id="wallet-source"
+                  value={walletSource}
+                  onChange={(event) => setWalletSource(event.target.value)}
+                  placeholder={walletSourcePlaceholder}
+                  required
+                />
+              </Field>
+            ) : null}
 
             {error ? (
               <p className="text-sm text-destructive">{error}</p>

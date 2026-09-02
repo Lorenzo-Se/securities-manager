@@ -5,6 +5,7 @@
  * OpenAPI-Dokumentation für die Securities Manager API
  * OpenAPI spec version: 1.0.0
  */
+import type { CryptoCoinWalletSourceType } from './cryptoCoinWalletSourceType';
 
 export interface CryptoCoin {
   id: string;
@@ -13,4 +14,7 @@ export interface CryptoCoin {
   image: string;
   /** @nullable */
   market_cap_rank?: number | null;
+  sync_supported: boolean;
+  /** @nullable */
+  wallet_source_type?: CryptoCoinWalletSourceType;
 }

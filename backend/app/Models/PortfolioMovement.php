@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'amount',
     'unit_price_usd',
     'occurred_at',
+    'tx_hash',
+    'external_id',
 ])]
 class PortfolioMovement extends Model
 {

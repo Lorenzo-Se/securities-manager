@@ -6,6 +6,7 @@ use App\Services\Crypto\CoinGeckoClient;
 use App\Services\Keycloak\JwtValidator;
 use App\Services\Keycloak\UserProvisioner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
@@ -93,6 +94,8 @@ function mockCoinGeckoCoins(): void
     });
 }
 
+const VALID_XPUB = 'xpub6CUGRUonZSQ4TWtTMmzYdrLuzeXZfQZGqnpMQigbRs73NNJ6chYAAFGbLH3FLQjpVcTwsydfKpE7LHjPXBj7wTgYrZ1cUxdtJWA';
+
 it('returns unauthorized without token for portfolios', function () {
     $this->getJson('/api/portfolios')
         ->assertUnauthorized();
@@ -113,7 +116,35 @@ it('lists portfolios for authenticated user', function () {
         ->assertJsonFragment(['name' => 'Mein BTC']);
 });
 
-it('creates a portfolio with valid crypto', function () {
+it('creates a portfolio with valid crypto and wallet source', function () {
+    Bus::fake();
+    mockCoinGeckoCoins();
+    mockAuthenticatedUser();
+
+    $this->withToken('valid-token')
+        ->postJson('/api/portfolios', [
+            'name' => 'Mein BTC',
+            'crypto_id' => 'bitcoin',
+            'wallet_source' => VALID_XPUB,
+        ])
+        ->assertCreated()
+        ->assertJson([
+            'name' => 'Mein BTC',
+            'crypto_id' => 'bitcoin',
+            'crypto_symbol' => 'btc',
+            'crypto_name' => 'Bitcoin',
+            'wallet_source_type' => 'xpub',
+            'sync_status' => 'pending',
+        ]);
+
+    $this->assertDatabaseHas('portfolios', [
+        'name' => 'Mein BTC',
+        'crypto_id' => 'bitcoin',
+        'chain_slug' => 'bitcoin',
+    ]);
+});
+
+it('rejects portfolio creation without wallet source', function () {
     mockCoinGeckoCoins();
     mockAuthenticatedUser();
 
@@ -122,18 +153,8 @@ it('creates a portfolio with valid crypto', function () {
             'name' => 'Mein BTC',
             'crypto_id' => 'bitcoin',
         ])
-        ->assertCreated()
-        ->assertJson([
-            'name' => 'Mein BTC',
-            'crypto_id' => 'bitcoin',
-            'crypto_symbol' => 'btc',
-            'crypto_name' => 'Bitcoin',
-        ]);
-
-    $this->assertDatabaseHas('portfolios', [
-        'name' => 'Mein BTC',
-        'crypto_id' => 'bitcoin',
-    ]);
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['wallet_source']);
 });
 
 it('rejects portfolio creation with invalid crypto_id', function () {
@@ -144,9 +165,37 @@ it('rejects portfolio creation with invalid crypto_id', function () {
         ->postJson('/api/portfolios', [
             'name' => 'Invalid',
             'crypto_id' => 'invalid-coin',
+            'wallet_source' => VALID_XPUB,
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['crypto_id']);
+});
+
+it('rejects portfolio creation with invalid xpub', function () {
+    mockCoinGeckoCoins();
+    mockAuthenticatedUser();
+
+    $this->withToken('valid-token')
+        ->postJson('/api/portfolios', [
+            'name' => 'Mein BTC',
+            'crypto_id' => 'bitcoin',
+            'wallet_source' => 'not-a-valid-xpub',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['wallet_source']);
+});
+
+it('updates portfolio name', function () {
+    mockCoinGeckoCoins();
+    $user = mockAuthenticatedUser();
+    $portfolio = Portfolio::factory()->for($user)->create(['name' => 'Alt']);
+
+    $this->withToken('valid-token')
+        ->patchJson("/api/portfolios/{$portfolio->id}", [
+            'name' => 'Neu',
+        ])
+        ->assertOk()
+        ->assertJsonPath('name', 'Neu');
 });
 
 it('deletes own portfolio', function () {

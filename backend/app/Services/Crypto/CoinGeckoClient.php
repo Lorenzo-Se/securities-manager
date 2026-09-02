@@ -34,6 +34,43 @@ class CoinGeckoClient
     /**
      * @return array{id: string, symbol: string, name: string, image: string, market_cap_rank: int|null}|null
      */
+    /**
+     * @return array{id: string, platforms: array<string, string>}|null
+     */
+    public function getCoinDetail(string $id): ?array
+    {
+        $cacheKey = 'coingecko.coin_detail.'.md5($id);
+        $ttl = config('crypto.coingecko.cache.coin_detail_ttl');
+
+        return Cache::remember($cacheKey, $ttl, function () use ($id): ?array {
+            $response = $this->request()->get("/coins/{$id}", [
+                'localization' => 'false',
+                'tickers' => 'false',
+                'market_data' => 'false',
+                'community_data' => 'false',
+                'developer_data' => 'false',
+            ]);
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            /** @var array<string, mixed> $data */
+            $data = $response->json();
+
+            /** @var array<string, string> $platforms */
+            $platforms = $data['platforms'] ?? [];
+
+            return [
+                'id' => (string) ($data['id'] ?? $id),
+                'platforms' => array_filter(
+                    $platforms,
+                    static fn (mixed $address): bool => is_string($address) && $address !== '',
+                ),
+            ];
+        });
+    }
+
     public function findCoinById(string $id): ?array
     {
         foreach ($this->getTopCoinsByMarketCap() as $coin) {

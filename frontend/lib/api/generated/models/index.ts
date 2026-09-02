@@ -7,9 +7,8 @@
  */
 
 export * from './createPortfolioBody';
-export * from './createPortfolioMovementBody';
-export * from './createPortfolioMovementBodyType';
 export * from './cryptoCoin';
+export * from './cryptoCoinWalletSourceType';
 export * from './cryptoPrices';
 export * from './cryptoPricesPrices';
 export * from './cryptoPricesReferencePrices';
@@ -20,5 +19,8 @@ export * from './listCryptoCoinsParams';
 export * from './portfolio';
 export * from './portfolioMovement';
 export * from './portfolioMovementType';
+export * from './portfolioSyncStatus';
+export * from './portfolioWalletSourceType';
 export * from './updateAuthenticatedUser200';
 export * from './updateAuthenticatedUserBody';
+export * from './updatePortfolioBody';

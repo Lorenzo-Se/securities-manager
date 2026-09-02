@@ -2,10 +2,11 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Trash2Icon, WalletIcon } from "lucide-react";
+import { Trash2Icon, PencilIcon, WalletIcon } from "lucide-react";
 
 import { deletePortfolioAction } from "@/lib/actions/portfolio";
 import { PortfolioCreateDialog } from "@/components/portfolio-create-dialog";
+import { PortfolioEditDialog } from "@/components/portfolio-edit-dialog";
 import { AuthButton } from "@/components/auth-button";
 import {
   AlertDialog,
@@ -64,6 +65,7 @@ function PortfolioCard({
   formatPrice: (value: number) => string;
 }) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const performance = calculatePortfolioPerformance({
@@ -127,6 +129,14 @@ function PortfolioCard({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          onClick={() => setEditDialogOpen(true)}
+        >
+          <PencilIcon className="size-4" />
+          <span className="sr-only">Portfolio bearbeiten</span>
+        </Button>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -158,9 +168,14 @@ function PortfolioCard({
           href={`/portfolios/${portfolio.id}`}
           className="inline-flex h-7 w-full items-center justify-center rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-sm font-medium hover:bg-muted hover:text-foreground"
         >
-          Buchungen verwalten
+          Transaktionen ansehen
         </Link>
       </CardContent>
+      <PortfolioEditDialog
+        portfolio={portfolio}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+      />
     </Card>
   );
 }
@@ -198,7 +213,7 @@ export function PortfoliosPageContent({
           <div>
             <h2 className="text-lg font-medium">Portfolios</h2>
             <p className="text-sm text-muted-foreground">
-              Erstelle mehrere Portfolios mit Live-Preisen von CoinGecko.
+              Erstelle Portfolios mit automatischem On-Chain-Transaktionsimport.
             </p>
           </div>
           <Button onClick={() => setCreateDialogOpen(true)}>

@@ -4,10 +4,16 @@ import { revalidatePath } from "next/cache";
 
 import { actionError, actionSuccess } from "@/lib/actions/errors";
 import type { ActionResult } from "@/lib/actions/types";
-import type { CreatePortfolioBody, Portfolio } from "@/lib/api/generated/models";
+import type {
+  CreatePortfolioBody,
+  Portfolio,
+  UpdatePortfolioBody,
+} from "@/lib/api/generated/models";
 import {
   createPortfolio,
   deletePortfolio,
+  syncPortfolio,
+  updatePortfolio,
 } from "@/lib/api/generated/portfolio/portfolio";
 
 export async function createPortfolioAction(
@@ -25,6 +31,45 @@ export async function createPortfolioAction(
     return actionSuccess(response.data);
   } catch (error) {
     return actionError(error, "Portfolio konnte nicht erstellt werden.");
+  }
+}
+
+export async function updatePortfolioAction(
+  portfolioId: number,
+  data: UpdatePortfolioBody,
+): Promise<ActionResult<Portfolio>> {
+  try {
+    const response = await updatePortfolio(portfolioId, data);
+
+    if (response.status !== 200) {
+      return actionError(null, "Portfolio konnte nicht aktualisiert werden.");
+    }
+
+    revalidatePath("/portfolios");
+    revalidatePath(`/portfolios/${portfolioId}`);
+
+    return actionSuccess(response.data);
+  } catch (error) {
+    return actionError(error, "Portfolio konnte nicht aktualisiert werden.");
+  }
+}
+
+export async function syncPortfolioAction(
+  portfolioId: number,
+): Promise<ActionResult<Portfolio>> {
+  try {
+    const response = await syncPortfolio(portfolioId);
+
+    if (response.status !== 202) {
+      return actionError(null, "Synchronisation konnte nicht gestartet werden.");
+    }
+
+    revalidatePath("/portfolios");
+    revalidatePath(`/portfolios/${portfolioId}`);
+
+    return actionSuccess(response.data);
+  } catch (error) {
+    return actionError(error, "Synchronisation konnte nicht gestartet werden.");
   }
 }
 

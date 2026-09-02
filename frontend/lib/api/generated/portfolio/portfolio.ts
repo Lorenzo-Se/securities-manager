@@ -7,9 +7,9 @@
  */
 import type {
   CreatePortfolioBody,
-  CreatePortfolioMovementBody,
   Portfolio,
-  PortfolioMovement
+  PortfolioMovement,
+  UpdatePortfolioBody
 } from '../models';
 
 import { customInstance } from '../../custom-instance';
@@ -197,6 +197,106 @@ export const deletePortfolio = async (portfolio: number, options?: Parameters<ty
 );}
 
 
+export type updatePortfolioResponse200 = {
+  data: Portfolio
+  status: 200
+}
+
+export type updatePortfolioResponse401 = {
+  data: void
+  status: 401
+}
+
+export type updatePortfolioResponse404 = {
+  data: void
+  status: 404
+}
+
+export type updatePortfolioResponse422 = {
+  data: void
+  status: 422
+}
+
+export type updatePortfolioResponseSuccess = (updatePortfolioResponse200) & {
+  headers: Headers;
+};
+export type updatePortfolioResponseError = (updatePortfolioResponse401 | updatePortfolioResponse404 | updatePortfolioResponse422) & {
+  headers: Headers;
+};
+
+export type updatePortfolioResponse = (updatePortfolioResponseSuccess | updatePortfolioResponseError)
+
+export const getUpdatePortfolioUrl = (portfolio: number,) => {
+
+
+
+
+  return `/portfolios/${portfolio}`
+}
+
+/**
+ * @summary Portfolio bearbeiten
+ */
+export const updatePortfolio = async (portfolio: number,
+    updatePortfolioBody: UpdatePortfolioBody, options?: Parameters<typeof customInstance>[1]): Promise<updatePortfolioResponse> => {
+
+  return customInstance<updatePortfolioResponse>(getUpdatePortfolioUrl(portfolio),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updatePortfolioBody)
+  }
+);}
+
+
+export type syncPortfolioResponse202 = {
+  data: Portfolio
+  status: 202
+}
+
+export type syncPortfolioResponse401 = {
+  data: void
+  status: 401
+}
+
+export type syncPortfolioResponse404 = {
+  data: void
+  status: 404
+}
+
+export type syncPortfolioResponseSuccess = (syncPortfolioResponse202) & {
+  headers: Headers;
+};
+export type syncPortfolioResponseError = (syncPortfolioResponse401 | syncPortfolioResponse404) & {
+  headers: Headers;
+};
+
+export type syncPortfolioResponse = (syncPortfolioResponseSuccess | syncPortfolioResponseError)
+
+export const getSyncPortfolioUrl = (portfolio: number,) => {
+
+
+
+
+  return `/portfolios/${portfolio}/sync`
+}
+
+/**
+ * @summary Portfolio manuell synchronisieren
+ */
+export const syncPortfolio = async (portfolio: number, options?: Parameters<typeof customInstance>[1]): Promise<syncPortfolioResponse> => {
+
+  return customInstance<syncPortfolioResponse>(getSyncPortfolioUrl(portfolio),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
 export type listPortfolioMovementsResponse200 = {
   data: PortfolioMovement[]
   status: 200
@@ -230,7 +330,7 @@ export const getListPortfolioMovementsUrl = (portfolio: number,) => {
 }
 
 /**
- * @summary Buchungen eines Portfolios abrufen
+ * @summary Transaktionen eines Portfolios abrufen
  */
 export const listPortfolioMovements = async (portfolio: number, options?: Parameters<typeof customInstance>[1]): Promise<listPortfolioMovementsResponse> => {
 
@@ -238,108 +338,6 @@ export const listPortfolioMovements = async (portfolio: number, options?: Parame
   {
     ...options,
     method: 'GET'
-
-
-  }
-);}
-
-
-export type createPortfolioMovementResponse201 = {
-  data: PortfolioMovement
-  status: 201
-}
-
-export type createPortfolioMovementResponse401 = {
-  data: void
-  status: 401
-}
-
-export type createPortfolioMovementResponse404 = {
-  data: void
-  status: 404
-}
-
-export type createPortfolioMovementResponse422 = {
-  data: void
-  status: 422
-}
-
-export type createPortfolioMovementResponseSuccess = (createPortfolioMovementResponse201) & {
-  headers: Headers;
-};
-export type createPortfolioMovementResponseError = (createPortfolioMovementResponse401 | createPortfolioMovementResponse404 | createPortfolioMovementResponse422) & {
-  headers: Headers;
-};
-
-export type createPortfolioMovementResponse = (createPortfolioMovementResponseSuccess | createPortfolioMovementResponseError)
-
-export const getCreatePortfolioMovementUrl = (portfolio: number,) => {
-
-
-
-
-  return `/portfolios/${portfolio}/movements`
-}
-
-/**
- * @summary Neue Buchung anlegen
- */
-export const createPortfolioMovement = async (portfolio: number,
-    createPortfolioMovementBody: CreatePortfolioMovementBody, options?: Parameters<typeof customInstance>[1]): Promise<createPortfolioMovementResponse> => {
-
-  return customInstance<createPortfolioMovementResponse>(getCreatePortfolioMovementUrl(portfolio),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(createPortfolioMovementBody)
-  }
-);}
-
-
-export type deletePortfolioMovementResponse204 = {
-  data: void
-  status: 204
-}
-
-export type deletePortfolioMovementResponse401 = {
-  data: void
-  status: 401
-}
-
-export type deletePortfolioMovementResponse404 = {
-  data: void
-  status: 404
-}
-
-export type deletePortfolioMovementResponseSuccess = (deletePortfolioMovementResponse204) & {
-  headers: Headers;
-};
-export type deletePortfolioMovementResponseError = (deletePortfolioMovementResponse401 | deletePortfolioMovementResponse404) & {
-  headers: Headers;
-};
-
-export type deletePortfolioMovementResponse = (deletePortfolioMovementResponseSuccess | deletePortfolioMovementResponseError)
-
-export const getDeletePortfolioMovementUrl = (portfolio: number,
-    movement: number,) => {
-
-
-
-
-  return `/portfolios/${portfolio}/movements/${movement}`
-}
-
-/**
- * @summary Buchung löschen
- */
-export const deletePortfolioMovement = async (portfolio: number,
-    movement: number, options?: Parameters<typeof customInstance>[1]): Promise<deletePortfolioMovementResponse> => {
-
-  return customInstance<deletePortfolioMovementResponse>(getDeletePortfolioMovementUrl(portfolio,movement),
-  {
-    ...options,
-    method: 'DELETE'
 
 
   }

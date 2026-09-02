@@ -9,4 +9,5 @@
 export type CreatePortfolioBody = {
   name: string;
   crypto_id: string;
+  wallet_source: string;
 };

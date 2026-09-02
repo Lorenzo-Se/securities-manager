@@ -3,7 +3,6 @@
 use App\Models\Portfolio;
 use App\Models\PortfolioMovement;
 use App\Models\User;
-use App\Services\Crypto\CoinGeckoClient;
 use App\Services\Keycloak\JwtValidator;
 use App\Services\Keycloak\UserProvisioner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,14 +38,6 @@ function mockMovementAuthenticatedUser(?User $user = null): User
     return $user;
 }
 
-function mockMovementCoinGecko(float $unitPriceUsd = 45000.12): void
-{
-    test()->mock(CoinGeckoClient::class, function ($mock) use ($unitPriceUsd) {
-        $mock->shouldReceive('getHistoricalPrice')
-            ->andReturn($unitPriceUsd);
-    });
-}
-
 it('returns portfolio with balance', function () {
     $user = mockMovementAuthenticatedUser();
     $portfolio = Portfolio::factory()->for($user)->create();
@@ -55,11 +46,13 @@ it('returns portfolio with balance', function () {
         'amount' => '1.5',
         'unit_price_usd' => '40000',
         'occurred_at' => '2026-08-10 10:00:00',
+        'tx_hash' => 'tx-deposit-1',
     ]);
     PortfolioMovement::factory()->for($portfolio)->withdrawal()->create([
         'amount' => '0.25',
         'unit_price_usd' => '42000',
         'occurred_at' => '2026-08-12 15:30:00',
+        'tx_hash' => 'tx-withdrawal-1',
     ]);
 
     $this->withToken('valid-token')
@@ -89,10 +82,12 @@ it('lists movements for own portfolio', function () {
     PortfolioMovement::factory()->for($portfolio)->deposit()->create([
         'amount' => '1',
         'occurred_at' => '2026-08-10 09:00:00',
+        'tx_hash' => 'tx-1',
     ]);
     PortfolioMovement::factory()->for($portfolio)->withdrawal()->create([
         'amount' => '0.5',
         'occurred_at' => '2026-08-11 18:00:00',
+        'tx_hash' => 'tx-2',
     ]);
 
     $this->withToken('valid-token')
@@ -100,7 +95,8 @@ it('lists movements for own portfolio', function () {
         ->assertOk()
         ->assertJsonCount(2)
         ->assertJsonPath('0.type', 'withdrawal')
-        ->assertJsonPath('1.type', 'deposit');
+        ->assertJsonPath('1.type', 'deposit')
+        ->assertJsonPath('0.tx_hash', 'tx-2');
 });
 
 it('returns not found when listing movements for another users portfolio', function () {
@@ -113,8 +109,7 @@ it('returns not found when listing movements for another users portfolio', funct
         ->assertNotFound();
 });
 
-it('creates a deposit movement', function () {
-    mockMovementCoinGecko(50000.5);
+it('does not allow manual movement creation', function () {
     $user = mockMovementAuthenticatedUser();
     $portfolio = Portfolio::factory()->for($user)->create();
 
@@ -124,145 +119,15 @@ it('creates a deposit movement', function () {
             'amount' => '0.5',
             'occurred_at' => '2026-08-15T14:30:00',
         ])
-        ->assertCreated()
-        ->assertJson([
-            'type' => 'deposit',
-            'amount' => '0.50000000',
-            'unit_price_usd' => '50000.50000000',
-        ])
-        ->assertJsonPath('occurred_at', fn ($value) => str_starts_with((string) $value, '2026-08-15T14:30:00'));
-
-    expect(PortfolioMovement::query()->where('portfolio_id', $portfolio->id)->count())->toBe(1);
+        ->assertMethodNotAllowed();
 });
 
-it('creates a withdrawal when balance is sufficient', function () {
-    mockMovementCoinGecko();
+it('does not allow manual movement deletion', function () {
     $user = mockMovementAuthenticatedUser();
     $portfolio = Portfolio::factory()->for($user)->create();
-
-    PortfolioMovement::factory()->for($portfolio)->deposit()->create([
-        'amount' => '2',
-        'unit_price_usd' => '40000',
-        'occurred_at' => '2026-08-10 10:00:00',
+    $movement = PortfolioMovement::factory()->for($portfolio)->deposit()->create([
+        'tx_hash' => 'tx-delete-test',
     ]);
-
-    $this->withToken('valid-token')
-        ->postJson("/api/portfolios/{$portfolio->id}/movements", [
-            'type' => 'withdrawal',
-            'amount' => '1.5',
-            'occurred_at' => '2026-08-15T16:00:00',
-        ])
-        ->assertCreated()
-        ->assertJson([
-            'type' => 'withdrawal',
-            'amount' => '1.50000000',
-        ]);
-});
-
-it('rejects withdrawal exceeding balance at occurred_at', function () {
-    $user = mockMovementAuthenticatedUser();
-    $portfolio = Portfolio::factory()->for($user)->create();
-
-    PortfolioMovement::factory()->for($portfolio)->deposit()->create([
-        'amount' => '1',
-        'occurred_at' => '2026-08-10 10:00:00',
-    ]);
-
-    $this->withToken('valid-token')
-        ->postJson("/api/portfolios/{$portfolio->id}/movements", [
-            'type' => 'withdrawal',
-            'amount' => '1.5',
-            'occurred_at' => '2026-08-15T16:00:00',
-        ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['amount']);
-});
-
-it('allows withdrawal at past date based on balance at occurred_at', function () {
-    mockMovementCoinGecko();
-    $user = mockMovementAuthenticatedUser();
-    $portfolio = Portfolio::factory()->for($user)->create();
-
-    PortfolioMovement::factory()->for($portfolio)->deposit()->create([
-        'amount' => '2',
-        'unit_price_usd' => '40000',
-        'occurred_at' => '2026-08-10 10:00:00',
-    ]);
-    PortfolioMovement::factory()->for($portfolio)->withdrawal()->create([
-        'amount' => '2',
-        'unit_price_usd' => '45000',
-        'occurred_at' => '2026-08-20 10:00:00',
-    ]);
-
-    $this->withToken('valid-token')
-        ->postJson("/api/portfolios/{$portfolio->id}/movements", [
-            'type' => 'withdrawal',
-            'amount' => '1',
-            'occurred_at' => '2026-08-15T16:00:00',
-        ])
-        ->assertCreated()
-        ->assertJson([
-            'type' => 'withdrawal',
-            'amount' => '1.00000000',
-        ]);
-});
-
-it('rejects invalid amount', function () {
-    $user = mockMovementAuthenticatedUser();
-    $portfolio = Portfolio::factory()->for($user)->create();
-
-    $this->withToken('valid-token')
-        ->postJson("/api/portfolios/{$portfolio->id}/movements", [
-            'type' => 'deposit',
-            'amount' => '0',
-            'occurred_at' => '2026-08-15T14:30:00',
-        ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['amount']);
-});
-
-it('rejects future timestamp', function () {
-    $user = mockMovementAuthenticatedUser();
-    $portfolio = Portfolio::factory()->for($user)->create();
-
-    $this->withToken('valid-token')
-        ->postJson("/api/portfolios/{$portfolio->id}/movements", [
-            'type' => 'deposit',
-            'amount' => '0.5',
-            'occurred_at' => now()->addHour()->toIso8601String(),
-        ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['occurred_at']);
-});
-
-it('deletes own movement', function () {
-    $user = mockMovementAuthenticatedUser();
-    $portfolio = Portfolio::factory()->for($user)->create();
-    $movement = PortfolioMovement::factory()->for($portfolio)->deposit()->create();
-
-    $this->withToken('valid-token')
-        ->deleteJson("/api/portfolios/{$portfolio->id}/movements/{$movement->id}")
-        ->assertNoContent();
-
-    $this->assertDatabaseMissing('portfolio_movements', ['id' => $movement->id]);
-});
-
-it('returns not found when deleting movement from another users portfolio', function () {
-    mockMovementAuthenticatedUser();
-    $otherUser = User::factory()->create();
-    $portfolio = Portfolio::factory()->for($otherUser)->create();
-    $movement = PortfolioMovement::factory()->for($portfolio)->deposit()->create();
-
-    $this->withToken('valid-token')
-        ->deleteJson("/api/portfolios/{$portfolio->id}/movements/{$movement->id}")
-        ->assertNotFound();
-});
-
-it('returns not found when deleting movement from wrong portfolio', function () {
-    $user = mockMovementAuthenticatedUser();
-    $portfolio = Portfolio::factory()->for($user)->create();
-    $otherPortfolio = Portfolio::factory()->for($user)->create();
-    $movement = PortfolioMovement::factory()->for($otherPortfolio)->deposit()->create();
 
     $this->withToken('valid-token')
         ->deleteJson("/api/portfolios/{$portfolio->id}/movements/{$movement->id}")

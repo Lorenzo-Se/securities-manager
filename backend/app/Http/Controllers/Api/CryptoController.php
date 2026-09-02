@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\Blockchain\ChainRegistry;
 use App\Services\Crypto\CoinGeckoClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,7 @@ class CryptoController extends Controller
             new OA\Response(response: 401, description: 'Nicht authentifiziert'),
         ],
     )]
-    public function coins(Request $request, CoinGeckoClient $coinGecko): JsonResponse
+    public function coins(Request $request, CoinGeckoClient $coinGecko, ChainRegistry $chainRegistry): JsonResponse
     {
         $search = $request->query('search');
         $search = is_string($search) ? $search : null;
@@ -50,6 +51,8 @@ class CryptoController extends Controller
                 'name' => $coin['name'],
                 'image' => $coin['image'],
                 'market_cap_rank' => $coin['market_cap_rank'],
+                'sync_supported' => $chainRegistry->isSyncSupported($coin['id']),
+                'wallet_source_type' => $chainRegistry->walletSourceTypeFor($coin['id'])?->value,
             ],
             $coins,
         ));
