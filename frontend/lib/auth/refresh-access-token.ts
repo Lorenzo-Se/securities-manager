@@ -1,5 +1,7 @@
 import type { JWT } from "next-auth/jwt";
 
+import { REFRESH_ACCESS_TOKEN_ERROR } from "@/lib/auth/session-error";
+
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   const issuer = process.env.AUTH_KEYCLOAK_ISSUER;
   const clientSecret = process.env.AUTH_KEYCLOAK_SECRET;
@@ -9,7 +11,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
   }
 
   if (!clientSecret) {
-    return { ...token, error: "RefreshAccessTokenError" };
+    return { ...token, error: REFRESH_ACCESS_TOKEN_ERROR };
   }
 
   try {
@@ -46,7 +48,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       error: undefined,
     };
   } catch {
-    return { ...token, error: "RefreshAccessTokenError" };
+    return { ...token, error: REFRESH_ACCESS_TOKEN_ERROR };
   }
 }
 

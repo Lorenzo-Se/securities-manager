@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getAccessToken } from "@/lib/auth/get-access-token";
+import { signOutOnAuthFailure } from "@/lib/auth/sign-out-on-auth-failure";
 
 const API_BASE_URL =
   process.env.API_URL ?? "http://localhost:8000/api";
@@ -85,6 +86,10 @@ export const customInstance = async <T>(
         : await response.text();
 
   if (!response.ok) {
+    if (response.status === 401) {
+      await signOutOnAuthFailure();
+    }
+
     const error = new Error(response.statusText) as ErrorType<Error>;
     error.status = response.status;
     error.info = data;

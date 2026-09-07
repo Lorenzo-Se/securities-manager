@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Keycloak from "next-auth/providers/keycloak";
 
 import { refreshAccessToken } from "@/lib/auth/refresh-access-token";
+import { REFRESH_ACCESS_TOKEN_ERROR } from "@/lib/auth/session-error";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -9,6 +10,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId: process.env.AUTH_KEYCLOAK_ID,
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET,
       issuer: process.env.AUTH_KEYCLOAK_ISSUER,
+      authorization: {
+        params: {
+          scope: "openid email profile offline_access",
+        },
+      },
     }),
   ],
   session: {
@@ -26,6 +32,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       }
 
+      if (token.error === REFRESH_ACCESS_TOKEN_ERROR) {
+        return token;
+      }
+
       if (
         token.expiresAt &&
         Date.now() < (token.expiresAt as number) * 1000 - 60_000
@@ -34,7 +44,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       if (!token.refreshToken) {
-        return token;
+        return { ...token, error: REFRESH_ACCESS_TOKEN_ERROR };
       }
 
       return refreshAccessToken(token);
