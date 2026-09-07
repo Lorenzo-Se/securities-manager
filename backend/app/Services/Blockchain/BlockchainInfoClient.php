@@ -2,83 +2,93 @@
 
 namespace App\Services\Blockchain;
 
+use App\Services\Blockchain\Concerns\CachesBlockchainResponses;
 use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class BlockchainInfoClient
 {
+    use CachesBlockchainResponses;
+
     /**
      * @return array<string, mixed>
      */
     public function getXpubDashboard(string $xpub): array
     {
         $cacheKey = 'blockchain_info.xpub.'.md5($xpub);
-        $ttl = config('crypto.mempool.cache_ttl');
+        $ttl = (int) config('crypto.blockchain_info.cache_ttl', 300);
 
-        return Cache::remember($cacheKey, $ttl, function () use ($xpub): array {
-            $receiveChain = $this->fetchSubchain($xpub, 0);
-            $changeChain = $this->fetchSubchain($xpub, 1);
-
-            /** @var list<array<string, mixed>> $receiveTxs */
-            $receiveTxs = $receiveChain['txs'] ?? [];
-            /** @var list<array<string, mixed>> $changeTxs */
-            $changeTxs = $changeChain['txs'] ?? [];
-
-            return [
-                'txs' => $this->mergeTransactions($receiveTxs, $changeTxs),
-            ];
+        return $this->remember($cacheKey, $ttl, function () use ($xpub): array {
+            return $this->requestXpubDashboard($xpub);
         });
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function fetchSubchain(string $xpub, int $chainIndex): array
+    private function requestXpubDashboard(string $xpub): array
     {
         $response = $this->request()->get('/multiaddr', [
-            'active' => $xpub.'|'.$chainIndex,
+            'active' => $xpub,
             'n' => 50,
+            'format' => 'json',
         ]);
+
+        if ($response->status() === 400) {
+            throw $this->buildClientError($xpub, $response);
+        }
 
         if (! $response->successful()) {
             throw new RuntimeException(
-                'Blockchain.info API request failed: '.$response->status(),
+                'Blockchain.info API-Anfrage fehlgeschlagen: HTTP '.$response->status(),
             );
         }
 
         /** @var array<string, mixed> $body */
         $body = $response->json();
 
-        return $body;
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $receiveTxs
-     * @param  list<array<string, mixed>>  $changeTxs
-     * @return list<array<string, mixed>>
-     */
-    private function mergeTransactions(array $receiveTxs, array $changeTxs): array
-    {
-        $merged = [];
-
-        foreach ([...$receiveTxs, ...$changeTxs] as $transaction) {
-            $hash = (string) ($transaction['hash'] ?? '');
-
-            if ($hash === '') {
-                continue;
-            }
-
-            $merged[$hash] = $transaction;
+        if (isset($body['error'])) {
+            throw $this->buildClientError($xpub, $response, (string) ($body['message'] ?? $body['error']));
         }
 
-        return array_values($merged);
+        /** @var list<array<string, mixed>> $transactions */
+        $transactions = $body['txs'] ?? [];
+
+        return [
+            'txs' => $transactions,
+        ];
+    }
+
+    private function buildClientError(string $xpub, $response, ?string $apiMessage = null): RuntimeException
+    {
+        if ($apiMessage === null) {
+            /** @var array<string, mixed>|null $body */
+            $body = $response->json();
+            $apiMessage = is_array($body) ? (string) ($body['message'] ?? $body['error'] ?? '') : '';
+        }
+
+        Log::info('Blockchain.info xpub sync rejected', [
+            'status' => $response->status(),
+            'message' => $apiMessage,
+            'xpub_prefix' => substr($xpub, 0, 4),
+        ]);
+
+        if ($apiMessage !== '' && str_contains(strtolower($apiMessage), 'invalid address')) {
+            return new RuntimeException(
+                'Bitcoin-xpub konnte nicht abgefragt werden. Prüfe den Extended Public Key oder nutze eine Einzeladresse für den Sync.',
+            );
+        }
+
+        return new RuntimeException(
+            'Blockchain.info API: '.($apiMessage !== '' ? $apiMessage : 'Anfrage fehlgeschlagen (HTTP '.$response->status().').'),
+        );
     }
 
     private function request(): PendingRequest
     {
-        return Http::baseUrl('https://blockchain.info')
+        return Http::baseUrl(rtrim((string) config('crypto.blockchain_info.base_url'), '/'))
             ->acceptJson()
             ->timeout(30);
     }

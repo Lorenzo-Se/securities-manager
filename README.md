@@ -155,16 +155,39 @@ cd frontend && npm run build
 
 ## On-Chain-Sync
 
-Portfolios importieren Transaktionen automatisch:
+Portfolios importieren Transaktionen automatisch über chain-spezifische, kostenlose APIs:
 
-- **Bitcoin (Adresse):** [mempool.space](https://mempool.space/api) (kostenlos)
-- **Bitcoin (xpub):** [blockchain.info](https://blockchain.info/api) (kostenlos), Blockchair nur mit API-Key als Fallback
-- **Andere Chains:** Blockchair (API-Key erforderlich)
+| Coin | Chain | Wallet-Typ | Provider | API-Key |
+|------|-------|------------|----------|---------|
+| BTC | Bitcoin | xpub / zpub / ypub / Adresse | blockchain.info (Legacy-xpub) / mempool.space (zpub/ypub + Adresse) | — (keyless) |
+| ETH | Ethereum | Adresse (0x) | Etherscan | `ETHERSCAN_API_KEY` |
+| USDT / USDC | Ethereum / BSC / Tron / Solana | Adresse | Etherscan / BscScan / TronGrid / Helius | je nach Chain (siehe unten) |
+| BNB | BNB Chain | Adresse (0x) | BscScan | `BSCSCAN_API_KEY` |
+| XRP | XRP Ledger | Adresse (r…) | XRPL Data API | — (keyless) |
+| SOL | Solana | Adresse | Helius | `HELIUS_API_KEY` |
+| TRX | Tron | Adresse (T…) | TronGrid | `TRONGRID_API_KEY` (optional) |
+| ADA | Cardano | Adresse | Blockfrost | `BLOCKFROST_API_KEY` |
+| DOGE / LTC | Dogecoin / Litecoin | Adresse | SoChain | — (keyless) |
+| ZEC | Zcash | Adresse | SoChain | — (keyless) |
+| HYPE | Hyperliquid | Adresse (0x) | Hyperliquid Info API | — (keyless) |
+
+**USDT/USDC Multi-Chain:** Die Chain wird automatisch aus dem Adressformat erkannt (0x → Ethereum vor BSC, T… → Tron, Base58 → Solana).
 
 ```env
 # backend/.env
-BLOCKCHAIR_API_KEY=   # nur für Ethereum, Altcoins etc. nötig
+ETHERSCAN_API_KEY=
+BSCSCAN_API_KEY=
+TRONGRID_API_KEY=
+HELIUS_API_KEY=
+BLOCKFROST_API_KEY=
 ```
+
+Kostenlose API-Keys:
+- [Etherscan](https://etherscan.io/apis)
+- [BscScan](https://bscscan.com/apis)
+- [TronGrid](https://www.trongrid.io/)
+- [Helius](https://www.helius.dev/)
+- [Blockfrost](https://blockfrost.io/)
 
 Für asynchrone Synchronisation muss der Queue-Worker laufen:
 

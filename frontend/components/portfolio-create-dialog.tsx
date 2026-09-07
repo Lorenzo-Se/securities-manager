@@ -93,8 +93,18 @@ export function PortfolioCreateDialog({
 
   const walletSourcePlaceholder =
     selectedCoin?.wallet_source_type === "xpub"
-      ? "xpub6CUGRUon..."
-      : "0x... oder Chain-Adresse";
+      ? "xpub6…, zpub6… oder ypub6…"
+      : selectedCoin?.id === "tether" || selectedCoin?.id === "usd-coin"
+        ? "0x… (ETH/BSC), T… (Tron) oder Solana Base58"
+        : selectedCoin?.symbol === "trx"
+          ? "T…"
+          : selectedCoin?.symbol === "xrp"
+            ? "r…"
+            : selectedCoin?.symbol === "sol"
+              ? "Solana Base58-Adresse"
+              : selectedCoin?.symbol === "ada"
+                ? "addr1…"
+                : "0x… oder Chain-Adresse";
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

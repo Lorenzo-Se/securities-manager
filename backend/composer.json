@@ -10,11 +10,13 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "bitwasp/bech32": "^0.0.1",
         "darkaonline/l5-swagger": "^11.1",
         "firebase/php-jwt": "^7.1",
         "laravel/framework": "^13.8",
         "laravel/tinker": "^3.0",
-        "psr/cache": "^3.0"
+        "psr/cache": "^3.0",
+        "qxcoin/bip32": "^0.0.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

@@ -6,6 +6,7 @@ use DateTimeInterface;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class CoinGeckoClient
@@ -105,14 +106,20 @@ class CoinGeckoClient
         $cacheKey = 'coingecko.prices.'.md5(implode(',', $ids).'.'.implode(',', $currencies));
         $ttl = config('crypto.coingecko.cache.prices_ttl');
 
-        return Cache::remember($cacheKey, $ttl, function () use ($ids, $currencies): array {
+        return $this->rememberWithStaleFallback($cacheKey, $ttl, function () use ($ids, $currencies): array {
             $response = $this->request()->get('/simple/price', [
                 'ids' => implode(',', $ids),
                 'vs_currencies' => implode(',', $currencies),
             ]);
 
+            if ($response->status() === 429) {
+                throw new RuntimeException('CoinGecko Rate-Limit erreicht (429).');
+            }
+
             if (! $response->successful()) {
-                throw new RuntimeException('Failed to fetch prices from CoinGecko.');
+                throw new RuntimeException(
+                    'CoinGecko-Preise nicht verfügbar (HTTP '.$response->status().').',
+                );
             }
 
             /** @var array<string, array<string, float>> $prices */
@@ -128,28 +135,73 @@ class CoinGeckoClient
         string $vsCurrency = 'usd',
     ): float {
         $vsCurrency = strtolower($vsCurrency);
+
+        if ($this->shouldUseSpotPrice($date)) {
+            return $this->getSpotPrice($id, $vsCurrency);
+        }
+
         $dateKey = $date->format('d-m-Y');
         $cacheKey = 'coingecko.history.'.md5($id.'.'.$dateKey.'.'.$vsCurrency);
         $ttl = config('crypto.coingecko.cache.prices_ttl');
 
-        return Cache::remember($cacheKey, $ttl, function () use ($id, $dateKey, $vsCurrency): float {
-            $response = $this->request()->get("/coins/{$id}/history", [
+        try {
+            return Cache::remember($cacheKey, $ttl, function () use ($id, $dateKey, $vsCurrency): float {
+                return $this->fetchHistoricalPriceFromApi($id, $dateKey, $vsCurrency);
+            });
+        } catch (RuntimeException $exception) {
+            Cache::forget($cacheKey);
+
+            Log::warning('CoinGecko historical price unavailable, using spot price fallback', [
+                'coin_id' => $id,
                 'date' => $dateKey,
-                'localization' => 'false',
+                'error' => $exception->getMessage(),
             ]);
 
-            if (! $response->successful()) {
-                throw new RuntimeException('Failed to fetch historical price from CoinGecko.');
-            }
+            return $this->getSpotPrice($id, $vsCurrency);
+        }
+    }
 
-            $price = $response->json("market_data.current_price.{$vsCurrency}");
+    private function shouldUseSpotPrice(DateTimeInterface $date): bool
+    {
+        return $date->format('Y-m-d') >= gmdate('Y-m-d');
+    }
 
-            if (! is_numeric($price)) {
-                throw new RuntimeException('Historical price missing from CoinGecko response.');
-            }
+    private function fetchHistoricalPriceFromApi(string $id, string $dateKey, string $vsCurrency): float
+    {
+        $response = $this->request()->get("/coins/{$id}/history", [
+            'date' => $dateKey,
+            'localization' => 'false',
+        ]);
 
-            return (float) $price;
-        });
+        if ($response->status() === 429) {
+            throw new RuntimeException('CoinGecko Rate-Limit erreicht (429).');
+        }
+
+        if (! $response->successful()) {
+            throw new RuntimeException(
+                'Historischer CoinGecko-Preis nicht verfügbar (HTTP '.$response->status().').',
+            );
+        }
+
+        $price = $response->json("market_data.current_price.{$vsCurrency}");
+
+        if (! is_numeric($price)) {
+            throw new RuntimeException('Historischer Preis fehlt in der CoinGecko-Antwort.');
+        }
+
+        return (float) $price;
+    }
+
+    private function getSpotPrice(string $id, string $vsCurrency): float
+    {
+        $prices = $this->getPrices([$id], $vsCurrency);
+        $price = $prices[$id][$vsCurrency] ?? null;
+
+        if (! is_numeric($price)) {
+            throw new RuntimeException('Aktueller Preis von CoinGecko nicht verfügbar.');
+        }
+
+        return (float) $price;
     }
 
     /**
@@ -305,17 +357,59 @@ class CoinGeckoClient
         ];
     }
 
+    /**
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    private function rememberWithStaleFallback(string $cacheKey, int $ttl, callable $callback): mixed
+    {
+        $staleKey = $cacheKey.'.stale';
+        $staleTtl = (int) config('crypto.coingecko.cache.stale_ttl');
+
+        try {
+            return Cache::remember($cacheKey, $ttl, function () use ($callback, $staleKey, $staleTtl): mixed {
+                $value = $callback();
+                Cache::put($staleKey, $value, $staleTtl);
+
+                return $value;
+            });
+        } catch (RuntimeException $exception) {
+            Cache::forget($cacheKey);
+
+            $stale = Cache::get($staleKey);
+
+            if ($stale !== null) {
+                Log::warning('CoinGecko unavailable, serving stale cache', [
+                    'cache_key' => $cacheKey,
+                    'error' => $exception->getMessage(),
+                ]);
+
+                return $stale;
+            }
+
+            throw $exception;
+        }
+    }
+
     private function request(): PendingRequest
     {
-        $request = Http::baseUrl(rtrim(config('crypto.coingecko.base_url'), '/'))
+        $baseUrl = rtrim((string) config('crypto.coingecko.base_url'), '/');
+
+        $request = Http::baseUrl($baseUrl)
             ->acceptJson()
             ->timeout(15);
 
         $apiKey = config('crypto.coingecko.api_key');
 
         if (is_string($apiKey) && $apiKey !== '') {
+            $header = str_contains($baseUrl, 'pro-api.coingecko.com')
+                ? 'x-cg-pro-api-key'
+                : 'x-cg-demo-api-key';
+
             $request = $request->withHeaders([
-                'x-cg-demo-api-key' => $apiKey,
+                $header => $apiKey,
             ]);
         }
 

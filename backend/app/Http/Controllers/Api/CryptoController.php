@@ -8,6 +8,7 @@ use App\Services\Crypto\CoinGeckoClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
+use RuntimeException;
 
 class CryptoController extends Controller
 {
@@ -101,7 +102,12 @@ class CryptoController extends Controller
         $vsCurrencies = $currency === $referenceCurrency
             ? [$referenceCurrency]
             : [$referenceCurrency, $currency];
-        $rawPrices = $coinGecko->getPrices($idList, $vsCurrencies);
+
+        try {
+            $rawPrices = $coinGecko->getPrices($idList, $vsCurrencies);
+        } catch (RuntimeException) {
+            $rawPrices = [];
+        }
 
         $prices = [];
         $referencePrices = [];

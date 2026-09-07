@@ -5,6 +5,7 @@ use App\Services\Crypto\CoinGeckoClient;
 use App\Services\Keycloak\JwtValidator;
 use App\Services\Keycloak\UserProvisioner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class)->in(__FILE__);
@@ -170,8 +171,47 @@ it('validates crypto prices ids parameter', function () {
         ->assertUnprocessable();
 });
 
+it('returns null prices when coingecko is unavailable', function () {
+    $user = User::factory()->create([
+        'keycloak_id' => 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+    ]);
+
+    $claims = [
+        'sub' => $user->keycloak_id,
+        'email' => $user->email,
+        'name' => $user->name,
+        'iss' => config('keycloak.issuer'),
+        'aud' => 'account',
+        'azp' => config('keycloak.client_id'),
+    ];
+
+    $this->mock(JwtValidator::class, function ($mock) use ($claims) {
+        $mock->shouldReceive('validate')->andReturn($claims);
+    });
+
+    $this->mock(UserProvisioner::class, function ($mock) use ($claims, $user) {
+        $mock->shouldReceive('provision')->with($claims)->andReturn($user);
+    });
+
+    $this->mock(CoinGeckoClient::class, function ($mock) {
+        $mock->shouldReceive('getPrices')
+            ->with(['bitcoin'], ['usd'])
+            ->andThrow(new RuntimeException('CoinGecko Rate-Limit erreicht (429).'));
+    });
+
+    $this->withToken('valid-token')
+        ->getJson('/api/crypto/prices?ids=bitcoin')
+        ->assertOk()
+        ->assertJson([
+            'currency' => 'usd',
+            'prices' => ['bitcoin' => null],
+            'reference_currency' => 'usd',
+            'reference_prices' => ['bitcoin' => null],
+        ]);
+});
+
 it('searches coins by name or symbol', function () {
-    Illuminate\Support\Facades\Cache::flush();
+    Cache::flush();
 
     Http::fake([
         'api.coingecko.com/api/v3/search*' => Http::response([
@@ -203,7 +243,7 @@ it('searches coins by name or symbol', function () {
 });
 
 it('sorts search results by market cap rank', function () {
-    Illuminate\Support\Facades\Cache::flush();
+    Cache::flush();
 
     Http::fake([
         'api.coingecko.com/api/v3/search*' => Http::response([

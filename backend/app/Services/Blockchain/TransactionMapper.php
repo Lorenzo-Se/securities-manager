@@ -2,44 +2,40 @@
 
 namespace App\Services\Blockchain;
 
-use App\Enums\WalletSourceType;
 use DateTimeImmutable;
 use DateTimeZone;
 
 class TransactionMapper
 {
     /**
-     * @param  array<string, mixed>  $dashboard
+     * @param  list<array<string, mixed>>  $transactions
      * @return list<SyncedTransaction>
      */
-    public function mapBlockchairDashboard(
-        array $dashboard,
-        ChainConfig $chain,
-        WalletSourceType $sourceType,
+    public function mapEvmExplorerTransactions(
+        array $transactions,
+        string $address,
+        int $nativeDecimals = 18,
         ?string $tokenContract = null,
     ): array {
-        /** @var array<string, array<string, mixed>> $transactions */
-        $transactions = $dashboard['data']['transactions'] ?? [];
-
         $synced = [];
+        $normalizedAddress = strtolower($address);
+        $normalizedContract = $tokenContract !== null ? strtolower($tokenContract) : null;
 
-        foreach ($transactions as $hash => $transactionData) {
-            $transaction = is_array($transactionData['transaction'] ?? null)
-                ? $transactionData['transaction']
-                : null;
+        foreach ($transactions as $transaction) {
+            $txHash = (string) ($transaction['hash'] ?? '');
 
-            if ($transaction === null) {
+            if ($txHash === '') {
                 continue;
             }
 
-            $txHash = (string) ($transaction['hash'] ?? $hash);
-            $amount = $this->resolveAmount($transactionData, $chain, $tokenContract);
+            $amount = $this->resolveEvmAmount($transaction, $normalizedAddress, $nativeDecimals, $normalizedContract);
 
             if ($amount === null || abs($amount) < 1e-12) {
                 continue;
             }
 
-            $occurredAt = $this->parseTime((string) ($transaction['time'] ?? ''));
+            $timestamp = (int) ($transaction['timeStamp'] ?? 0);
+            $occurredAt = $this->timestampToUtc($timestamp);
 
             if ($occurredAt === null) {
                 continue;
@@ -50,7 +46,329 @@ class TransactionMapper
                 type: $amount > 0 ? 'deposit' : 'withdrawal',
                 amount: number_format(abs($amount), 8, '.', ''),
                 occurredAt: $occurredAt,
-                externalId: (string) ($transaction['id'] ?? $txHash),
+                externalId: (string) ($transaction['blockNumber'] ?? $txHash),
+            );
+        }
+
+        return $synced;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $transactions
+     * @return list<SyncedTransaction>
+     */
+    public function mapTronGridTransactions(
+        array $transactions,
+        string $address,
+        int $nativeDecimals = 6,
+        ?string $tokenContract = null,
+    ): array {
+        $synced = [];
+        $normalizedAddress = $address;
+        $isTrc20 = $tokenContract !== null;
+
+        foreach ($transactions as $transaction) {
+            if ($isTrc20) {
+                $txHash = (string) ($transaction['transaction_id'] ?? '');
+                $raw = $transaction['value'] ?? null;
+                $decimals = (int) ($transaction['token_info']['decimals'] ?? 6);
+                $from = (string) ($transaction['from'] ?? '');
+                $to = (string) ($transaction['to'] ?? '');
+            } else {
+                $rawData = $transaction['raw_data'] ?? null;
+                $contract = is_array($rawData) ? ($rawData['contract'][0] ?? null) : null;
+                $parameter = is_array($contract) ? ($contract['parameter']['value'] ?? null) : null;
+
+                if (! is_array($parameter)) {
+                    continue;
+                }
+
+                $txHash = (string) ($transaction['txID'] ?? '');
+                $raw = $parameter['amount'] ?? null;
+                $decimals = $nativeDecimals;
+                $from = $this->hexToTronAddress((string) ($parameter['owner_address'] ?? ''));
+                $to = $this->hexToTronAddress((string) ($parameter['to_address'] ?? ''));
+            }
+
+            if ($txHash === '' || $raw === null || ! is_numeric((string) $raw)) {
+                continue;
+            }
+
+            $value = (float) $raw / (10 ** $decimals);
+
+            if ($value < 1e-12) {
+                continue;
+            }
+
+            $amount = match (true) {
+                $to === $normalizedAddress => $value,
+                $from === $normalizedAddress => -$value,
+                default => null,
+            };
+
+            if ($amount === null || abs($amount) < 1e-12) {
+                continue;
+            }
+
+            $timestamp = (int) ($transaction['block_timestamp'] ?? 0);
+            $occurredAt = $timestamp > 0
+                ? (new DateTimeImmutable('@'.(int) ($timestamp / 1000)))->setTimezone(new DateTimeZone('UTC'))
+                : null;
+
+            if ($occurredAt === null) {
+                continue;
+            }
+
+            $synced[] = new SyncedTransaction(
+                txHash: $txHash,
+                type: $amount > 0 ? 'deposit' : 'withdrawal',
+                amount: number_format(abs($amount), 8, '.', ''),
+                occurredAt: $occurredAt,
+                externalId: $txHash,
+            );
+        }
+
+        return $synced;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $transactions
+     * @return list<SyncedTransaction>
+     */
+    public function mapHeliusTransactions(
+        array $transactions,
+        string $address,
+        int $nativeDecimals = 9,
+        ?string $tokenContract = null,
+    ): array {
+        $synced = [];
+
+        foreach ($transactions as $transaction) {
+            $txHash = (string) ($transaction['signature'] ?? '');
+
+            if ($txHash === '') {
+                continue;
+            }
+
+            $amount = $this->resolveHeliusAmount($transaction, $address, $nativeDecimals, $tokenContract);
+
+            if ($amount === null || abs($amount) < 1e-12) {
+                continue;
+            }
+
+            $timestamp = (int) ($transaction['timestamp'] ?? 0);
+            $occurredAt = $this->timestampToUtc($timestamp);
+
+            if ($occurredAt === null) {
+                continue;
+            }
+
+            $synced[] = new SyncedTransaction(
+                txHash: $txHash,
+                type: $amount > 0 ? 'deposit' : 'withdrawal',
+                amount: number_format(abs($amount), 8, '.', ''),
+                occurredAt: $occurredAt,
+                externalId: $txHash,
+            );
+        }
+
+        return $synced;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $transactions
+     * @return list<SyncedTransaction>
+     */
+    public function mapBlockfrostTransactions(
+        array $transactions,
+        string $address,
+    ): array {
+        $synced = [];
+
+        foreach ($transactions as $transaction) {
+            $txHash = (string) ($transaction['tx_hash'] ?? '');
+
+            if ($txHash === '') {
+                continue;
+            }
+
+            $amount = $this->resolveBlockfrostAmount($transaction, $address);
+
+            if ($amount === null || abs($amount) < 1e-12) {
+                continue;
+            }
+
+            $blockTime = (int) ($transaction['block_time'] ?? 0);
+            $occurredAt = $this->timestampToUtc($blockTime);
+
+            if ($occurredAt === null) {
+                continue;
+            }
+
+            $synced[] = new SyncedTransaction(
+                txHash: $txHash,
+                type: $amount > 0 ? 'deposit' : 'withdrawal',
+                amount: number_format(abs($amount), 8, '.', ''),
+                occurredAt: $occurredAt,
+                externalId: $txHash,
+            );
+        }
+
+        return $synced;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $transactions
+     * @return list<SyncedTransaction>
+     */
+    public function mapSoChainTransactions(
+        array $transactions,
+        string $address,
+        int $decimals = 8,
+    ): array {
+        $synced = [];
+
+        foreach ($transactions as $transaction) {
+            $txHash = (string) ($transaction['txid'] ?? '');
+
+            if ($txHash === '') {
+                continue;
+            }
+
+            $incoming = (float) ($transaction['incoming'] ?? 0);
+            $outgoing = (float) ($transaction['outgoing'] ?? 0);
+            $change = ($incoming - $outgoing) / (10 ** $decimals);
+
+            if (abs($change) < 1e-12) {
+                continue;
+            }
+
+            $timestamp = (int) ($transaction['time'] ?? 0);
+            $occurredAt = $this->timestampToUtc($timestamp);
+
+            if ($occurredAt === null) {
+                continue;
+            }
+
+            $synced[] = new SyncedTransaction(
+                txHash: $txHash,
+                type: $change > 0 ? 'deposit' : 'withdrawal',
+                amount: number_format(abs($change), 8, '.', ''),
+                occurredAt: $occurredAt,
+                externalId: $txHash,
+            );
+        }
+
+        return $synced;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $transactions
+     * @return list<SyncedTransaction>
+     */
+    public function mapXrplTransactions(
+        array $transactions,
+        string $address,
+        int $decimals = 6,
+    ): array {
+        $synced = [];
+
+        foreach ($transactions as $entry) {
+            $tx = $entry['tx'] ?? null;
+
+            if (! is_array($tx)) {
+                continue;
+            }
+
+            if (($tx['TransactionType'] ?? '') !== 'Payment') {
+                continue;
+            }
+
+            $txHash = (string) ($tx['hash'] ?? '');
+
+            if ($txHash === '') {
+                continue;
+            }
+
+            $destination = (string) ($tx['Destination'] ?? '');
+            $account = (string) ($tx['Account'] ?? '');
+            $delivered = $entry['meta']['delivered_amount'] ?? ($tx['Amount'] ?? null);
+
+            if ($delivered === null || ! is_numeric((string) $delivered)) {
+                continue;
+            }
+
+            $value = (float) $delivered / (10 ** $decimals);
+
+            $amount = match (true) {
+                $destination === $address => $value,
+                $account === $address => -$value,
+                default => null,
+            };
+
+            if ($amount === null || abs($amount) < 1e-12) {
+                continue;
+            }
+
+            $date = (int) ($tx['date'] ?? 0);
+            $occurredAt = $date > 0
+                ? (new DateTimeImmutable('@'.($date + 946684800)))->setTimezone(new DateTimeZone('UTC'))
+                : null;
+
+            if ($occurredAt === null) {
+                continue;
+            }
+
+            $synced[] = new SyncedTransaction(
+                txHash: $txHash,
+                type: $amount > 0 ? 'deposit' : 'withdrawal',
+                amount: number_format(abs($amount), 8, '.', ''),
+                occurredAt: $occurredAt,
+                externalId: $txHash,
+            );
+        }
+
+        return $synced;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $fills
+     * @return list<SyncedTransaction>
+     */
+    public function mapHyperliquidFills(array $fills): array
+    {
+        $synced = [];
+
+        foreach ($fills as $fill) {
+            $txHash = (string) ($fill['hash'] ?? $fill['tid'] ?? '');
+
+            if ($txHash === '') {
+                continue;
+            }
+
+            $size = (float) ($fill['sz'] ?? 0);
+            $side = (string) ($fill['side'] ?? '');
+
+            if ($size < 1e-12) {
+                continue;
+            }
+
+            $type = $side === 'B' ? 'deposit' : 'withdrawal';
+            $timestamp = (int) ($fill['time'] ?? 0);
+            $occurredAt = $timestamp > 0
+                ? (new DateTimeImmutable('@'.(int) ($timestamp / 1000)))->setTimezone(new DateTimeZone('UTC'))
+                : null;
+
+            if ($occurredAt === null) {
+                continue;
+            }
+
+            $synced[] = new SyncedTransaction(
+                txHash: $txHash,
+                type: $type,
+                amount: number_format(abs($size), 8, '.', ''),
+                occurredAt: $occurredAt,
+                externalId: (string) ($fill['tid'] ?? $txHash),
             );
         }
 
@@ -82,9 +400,7 @@ class TransactionMapper
             }
 
             $timestamp = (int) ($transaction['status']['block_time'] ?? 0);
-            $occurredAt = $timestamp > 0
-                ? (new DateTimeImmutable('@'.$timestamp))->setTimezone(new DateTimeZone('UTC'))
-                : null;
+            $occurredAt = $this->timestampToUtc($timestamp);
 
             if ($occurredAt === null) {
                 continue;
@@ -130,9 +446,7 @@ class TransactionMapper
             }
 
             $timestamp = (int) ($transaction['time'] ?? 0);
-            $occurredAt = $timestamp > 0
-                ? (new DateTimeImmutable('@'.$timestamp))->setTimezone(new DateTimeZone('UTC'))
-                : null;
+            $occurredAt = $this->timestampToUtc($timestamp);
 
             if ($occurredAt === null) {
                 continue;
@@ -151,73 +465,154 @@ class TransactionMapper
     }
 
     /**
-     * @param  array<string, mixed>  $transactionData
+     * @param  array<string, mixed>  $transaction
      */
-    private function resolveAmount(
-        array $transactionData,
-        ChainConfig $chain,
-        ?string $tokenContract,
+    private function resolveEvmAmount(
+        array $transaction,
+        string $normalizedAddress,
+        int $nativeDecimals,
+        ?string $normalizedContract,
     ): ?float {
-        if ($tokenContract !== null) {
-            return $this->resolveTokenAmount($transactionData, $chain, $tokenContract);
-        }
+        if ($normalizedContract !== null) {
+            $contract = strtolower((string) ($transaction['contractAddress'] ?? ''));
+            $to = strtolower((string) ($transaction['to'] ?? ''));
+            $from = strtolower((string) ($transaction['from'] ?? ''));
+            $value = (float) ($transaction['value'] ?? 0);
+            $decimals = (int) ($transaction['tokenDecimal'] ?? 18);
 
-        $transaction = $transactionData['transaction'] ?? null;
+            if ($contract !== $normalizedContract) {
+                return null;
+            }
 
-        if (! is_array($transaction) || ! isset($transaction['balance_change'])) {
+            if ($to === $normalizedAddress) {
+                return $value / (10 ** $decimals);
+            }
+
+            if ($from === $normalizedAddress) {
+                return -($value / (10 ** $decimals));
+            }
+
             return null;
         }
 
-        return ((float) $transaction['balance_change']) / (10 ** $chain->decimals);
+        $to = strtolower((string) ($transaction['to'] ?? ''));
+        $from = strtolower((string) ($transaction['from'] ?? ''));
+        $value = (float) ($transaction['value'] ?? 0);
+
+        if ($to === $normalizedAddress) {
+            return $value / (10 ** $nativeDecimals);
+        }
+
+        if ($from === $normalizedAddress) {
+            return -($value / (10 ** $nativeDecimals));
+        }
+
+        return null;
     }
 
     /**
-     * @param  array<string, mixed>  $transactionData
+     * @param  array<string, mixed>  $transaction
      */
-    private function resolveTokenAmount(
-        array $transactionData,
-        ChainConfig $chain,
-        string $tokenContract,
+    private function resolveHeliusAmount(
+        array $transaction,
+        string $address,
+        int $nativeDecimals,
+        ?string $tokenContract,
     ): ?float {
-        $calls = $transactionData['calls'] ?? [];
+        if ($tokenContract !== null) {
+            $total = 0.0;
 
-        if (! is_array($calls)) {
-            return null;
+            foreach ($transaction['tokenTransfers'] ?? [] as $transfer) {
+                if (! is_array($transfer)) {
+                    continue;
+                }
+
+                $mint = (string) ($transfer['mint'] ?? '');
+
+                if ($mint !== $tokenContract) {
+                    continue;
+                }
+
+                $value = (float) ($transfer['tokenAmount'] ?? 0);
+                $to = (string) ($transfer['toUserAccount'] ?? '');
+                $from = (string) ($transfer['fromUserAccount'] ?? '');
+
+                if ($to === $address) {
+                    $total += $value;
+                } elseif ($from === $address) {
+                    $total -= $value;
+                }
+            }
+
+            return $total === 0.0 ? null : $total;
         }
 
         $total = 0.0;
-        $normalizedContract = strtolower($tokenContract);
 
-        foreach ($calls as $call) {
-            if (! is_array($call)) {
+        foreach ($transaction['nativeTransfers'] ?? [] as $transfer) {
+            if (! is_array($transfer)) {
                 continue;
             }
 
-            $callContract = strtolower((string) ($call['token_address'] ?? $call['recipient'] ?? ''));
+            $value = (float) ($transfer['amount'] ?? 0) / (10 ** $nativeDecimals);
+            $to = (string) ($transfer['toUserAccount'] ?? '');
+            $from = (string) ($transfer['fromUserAccount'] ?? '');
 
-            if ($callContract !== $normalizedContract) {
-                continue;
-            }
-
-            $value = (float) ($call['value'] ?? 0);
-
-            if ($value === 0.0) {
-                continue;
-            }
-
-            $sender = strtolower((string) ($call['sender'] ?? ''));
-            $recipient = strtolower((string) ($call['recipient'] ?? ''));
-
-            if ($recipient !== '' && $sender !== '') {
+            if ($to === $address) {
                 $total += $value;
+            } elseif ($from === $address) {
+                $total -= $value;
             }
         }
 
-        if ($total === 0.0) {
-            return null;
+        return $total === 0.0 ? null : $total;
+    }
+
+    /**
+     * @param  array<string, mixed>  $transaction
+     */
+    private function resolveBlockfrostAmount(array $transaction, string $address): ?float
+    {
+        $inputs = $transaction['inputs'] ?? [];
+        $outputs = $transaction['outputs'] ?? [];
+        $received = 0.0;
+        $sent = 0.0;
+
+        foreach ($outputs as $output) {
+            if (! is_array($output)) {
+                continue;
+            }
+
+            if (($output['address'] ?? '') === $address) {
+                $amounts = $output['amount'] ?? [];
+
+                foreach ($amounts as $amount) {
+                    if (is_array($amount) && ($amount['unit'] ?? '') === 'lovelace') {
+                        $received += (float) ($amount['quantity'] ?? 0);
+                    }
+                }
+            }
         }
 
-        return $total / (10 ** $chain->decimals);
+        foreach ($inputs as $input) {
+            if (! is_array($input)) {
+                continue;
+            }
+
+            if (($input['address'] ?? '') === $address) {
+                $amounts = $input['amount'] ?? [];
+
+                foreach ($amounts as $amount) {
+                    if (is_array($amount) && ($amount['unit'] ?? '') === 'lovelace') {
+                        $sent += (float) ($amount['quantity'] ?? 0);
+                    }
+                }
+            }
+        }
+
+        $change = ($received - $sent) / 1_000_000;
+
+        return $change === 0.0 ? null : $change;
     }
 
     /**
@@ -258,14 +653,25 @@ class TransactionMapper
         return $change === 0.0 ? null : $change;
     }
 
-    private function parseTime(string $time): ?DateTimeImmutable
+    private function timestampToUtc(int $timestamp): ?DateTimeImmutable
     {
-        if ($time === '') {
+        if ($timestamp <= 0) {
             return null;
         }
 
-        $parsed = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $time, new DateTimeZone('UTC'));
+        return (new DateTimeImmutable('@'.$timestamp))->setTimezone(new DateTimeZone('UTC'));
+    }
 
-        return $parsed ?: null;
+    private function hexToTronAddress(string $hexAddress): string
+    {
+        if ($hexAddress === '') {
+            return '';
+        }
+
+        if (str_starts_with($hexAddress, 'T')) {
+            return $hexAddress;
+        }
+
+        return $hexAddress;
     }
 }

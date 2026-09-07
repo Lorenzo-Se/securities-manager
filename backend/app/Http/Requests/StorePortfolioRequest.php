@@ -71,6 +71,7 @@ class StorePortfolioRequest extends FormRequest
     {
         $syncable = app(ChainRegistry::class)->resolve(
             $this->string('crypto_id')->toString(),
+            trim($this->string('wallet_source')->toString()),
         );
 
         if ($syncable === null) {
