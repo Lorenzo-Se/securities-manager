@@ -7,6 +7,7 @@ import { Trash2Icon, PencilIcon, WalletIcon } from "lucide-react";
 import { deletePortfolioAction } from "@/lib/actions/portfolio";
 import { PortfolioCreateDialog } from "@/components/portfolio-create-dialog";
 import { PortfolioEditDialog } from "@/components/portfolio-edit-dialog";
+import { PortfolioInvitationsBanner } from "@/components/portfolio-invitations-banner";
 import { AuthButton } from "@/components/auth-button";
 import {
   AlertDialog,
@@ -39,18 +40,24 @@ import type {
   CryptoPrices,
   GetAuthenticatedUser200,
   Portfolio,
+  PortfolioShareInvitation,
 } from "@/lib/api/generated/models";
 import { createPriceFormatter } from "@/lib/format-price";
 import {
   calculatePortfolioPerformance,
+  calculateShareValue,
   formatProfitPercent,
+  getEffectiveBalance,
+  getEffectiveCostBasisUsd,
   getProfitToneClass,
+  shouldShowTotalPortfolioValue,
 } from "@/lib/portfolio-performance";
 
 type PortfoliosPageContentProps = {
   portfolios: Portfolio[];
   user: GetAuthenticatedUser200;
   prices: CryptoPrices | null;
+  invitations: PortfolioShareInvitation[];
 };
 
 function PortfolioCard({
@@ -68,15 +75,27 @@ function PortfolioCard({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const performance = calculatePortfolioPerformance({
-    balance: Number(portfolio.balance),
-    costBasisUsd:
-      portfolio.cost_basis_usd !== null
-        ? Number(portfolio.cost_basis_usd)
-        : null,
-    priceUser,
-    priceUsd,
-  });
+  const isOwner = portfolio.access_role === "owner";
+  const showTotal = shouldShowTotalPortfolioValue(portfolio);
+  const effectiveBalance = getEffectiveBalance(portfolio);
+  const effectiveCostBasis = getEffectiveCostBasisUsd(portfolio);
+
+  const performance =
+    effectiveBalance !== null
+      ? calculatePortfolioPerformance({
+          balance: effectiveBalance,
+          costBasisUsd: effectiveCostBasis,
+          priceUser,
+          priceUsd,
+        })
+      : null;
+
+  const shareValue =
+    effectiveBalance !== null
+      ? calculateShareValue(effectiveBalance, priceUser)
+      : null;
+
+  const displayValue = shareValue ?? performance?.portfolioValue ?? null;
 
   const handleDelete = () => {
     setIsDeleting(true);
@@ -88,11 +107,19 @@ function PortfolioCard({
     });
   };
 
+  const valueLabel =
+    !showTotal && portfolio.share?.my_share_amount
+      ? "Wert deines Anteils"
+      : "Portfoliowert";
+
   return (
     <Card className="transition-colors hover:border-foreground/20">
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <Link href={`/portfolios/${portfolio.id}`} className="min-w-0 flex-1 space-y-1">
-          <CardTitle className="hover:underline">{portfolio.name}</CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle className="hover:underline">{portfolio.name}</CardTitle>
+            {!isOwner ? <Badge variant="outline">Geteilt</Badge> : null}
+          </div>
           <CardDescription>
             <Badge variant="secondary" className="uppercase">
               {portfolio.crypto_symbol}
@@ -101,48 +128,63 @@ function PortfolioCard({
           </CardDescription>
         </Link>
 
-        <AlertDialog>
-          <AlertDialogTrigger
-            render={
-              <Button
-                variant="outline"
-                size="icon-sm"
-                disabled={isDeleting || isPending}
-              />
-            }
-          >
-            <Trash2Icon className="size-4" />
-            <span className="sr-only">Portfolio löschen</span>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Portfolio löschen?</AlertDialogTitle>
-              <AlertDialogDescription>
-                „{portfolio.name}“ wird dauerhaft gelöscht.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-              <AlertDialogAction variant="destructive" onClick={handleDelete}>
-                Löschen
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          onClick={() => setEditDialogOpen(true)}
-        >
-          <PencilIcon className="size-4" />
-          <span className="sr-only">Portfolio bearbeiten</span>
-        </Button>
+        {isOwner ? (
+          <>
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    disabled={isDeleting || isPending}
+                  />
+                }
+              >
+                <Trash2Icon className="size-4" />
+                <span className="sr-only">Portfolio löschen</span>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Portfolio löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    „{portfolio.name}“ wird dauerhaft gelöscht.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction variant="destructive" onClick={handleDelete}>
+                    Löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => setEditDialogOpen(true)}
+            >
+              <PencilIcon className="size-4" />
+              <span className="sr-only">Portfolio bearbeiten</span>
+            </Button>
+          </>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
+        {portfolio.share?.my_share_amount ? (
+          <div>
+            <p className="text-sm text-muted-foreground">Dein Anteil</p>
+            <p className="text-lg font-semibold tracking-tight">
+              {portfolio.share.my_share_amount}{" "}
+              <span className="text-sm uppercase text-muted-foreground">
+                {portfolio.crypto_symbol}
+              </span>
+            </p>
+          </div>
+        ) : null}
         <div>
-          <p className="text-sm text-muted-foreground">Portfoliowert</p>
+          <p className="text-sm text-muted-foreground">{valueLabel}</p>
           <p className="text-2xl font-semibold tracking-tight">
-            {performance !== null ? formatPrice(performance.portfolioValue) : "—"}
+            {displayValue !== null ? formatPrice(displayValue) : "—"}
           </p>
         </div>
         <div>
@@ -171,11 +213,13 @@ function PortfolioCard({
           Transaktionen ansehen
         </Link>
       </CardContent>
-      <PortfolioEditDialog
-        portfolio={portfolio}
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-      />
+      {isOwner ? (
+        <PortfolioEditDialog
+          portfolio={portfolio}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+        />
+      ) : null}
     </Card>
   );
 }
@@ -184,6 +228,7 @@ export function PortfoliosPageContent({
   portfolios,
   user,
   prices,
+  invitations,
 }: PortfoliosPageContentProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
@@ -209,6 +254,8 @@ export function PortfoliosPageContent({
       </header>
 
       <main className="mx-auto w-full max-w-5xl px-6 py-8">
+        <PortfolioInvitationsBanner invitations={invitations} />
+
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-medium">Portfolios</h2>

@@ -5,10 +5,12 @@ import type {
   GetAuthenticatedUser200,
   Portfolio,
   PortfolioMovement,
+  PortfolioShare,
 } from "@/lib/api/generated/models";
 import {
   getPortfolio,
   listPortfolioMovements,
+  listPortfolioShares,
 } from "@/lib/api/generated/portfolio/portfolio";
 import { getAuthenticatedUser } from "@/lib/api/generated/user/user";
 import { unwrap } from "@/lib/api/unwrap";
@@ -29,7 +31,7 @@ export default async function PortfolioDetailPage({
     unwrap<Portfolio>(response),
   );
 
-  const [user, movements, prices] = await Promise.all([
+  const [user, movements, prices, shares] = await Promise.all([
     getAuthenticatedUser().then((response) =>
       unwrap<GetAuthenticatedUser200>(response),
     ),
@@ -39,6 +41,11 @@ export default async function PortfolioDetailPage({
     getCryptoPrices({ ids: portfolio.crypto_id }).then((response) =>
       unwrap<CryptoPrices>(response),
     ),
+    portfolio.access_role === "owner"
+      ? listPortfolioShares(portfolioId)
+          .then((response) => unwrap<PortfolioShare[]>(response))
+          .catch(() => [] as PortfolioShare[])
+      : Promise.resolve([] as PortfolioShare[]),
   ]);
 
   return (
@@ -48,6 +55,7 @@ export default async function PortfolioDetailPage({
       user={user}
       movements={movements}
       prices={prices}
+      shares={shares}
     />
   );
 }

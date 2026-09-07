@@ -4,10 +4,16 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowLeftIcon, PencilIcon, RefreshCwIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  PencilIcon,
+  RefreshCwIcon,
+  Share2Icon,
+} from "lucide-react";
 
 import { syncPortfolioAction } from "@/lib/actions/portfolio";
 import { PortfolioEditDialog } from "@/components/portfolio-edit-dialog";
+import { PortfolioShareDialog } from "@/components/portfolio-share-dialog";
 import { AuthButton } from "@/components/auth-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,13 +43,19 @@ import type {
   GetAuthenticatedUser200,
   Portfolio,
   PortfolioMovement,
+  PortfolioShare,
   PortfolioSyncStatus,
 } from "@/lib/api/generated/models";
 import { createPriceFormatter } from "@/lib/format-price";
 import {
   calculatePortfolioPerformance,
+  calculateShareValue,
   formatProfitPercent,
+  getEffectiveBalance,
+  getEffectiveCostBasisUsd,
   getProfitToneClass,
+  shouldShowMovements,
+  shouldShowTotalPortfolioValue,
 } from "@/lib/portfolio-performance";
 
 const amountFormatter = new Intl.NumberFormat("de-DE", {
@@ -116,6 +128,7 @@ type PortfolioDetailContentProps = {
   user: GetAuthenticatedUser200;
   movements: PortfolioMovement[];
   prices: CryptoPrices;
+  shares: PortfolioShare[];
 };
 
 export function PortfolioDetailContent({
@@ -124,9 +137,18 @@ export function PortfolioDetailContent({
   user,
   movements,
   prices,
+  shares,
 }: PortfolioDetailContentProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [isSyncing, startSyncTransition] = useTransition();
+
+  const isOwner = portfolio.access_role === "owner";
+  const showTotal = shouldShowTotalPortfolioValue(portfolio);
+  const showMovements = shouldShowMovements(portfolio);
+  const hasShareAmount =
+    portfolio.share?.my_share_amount !== null &&
+    portfolio.share?.my_share_amount !== undefined;
 
   const priceUser = prices.prices[portfolio.crypto_id];
   const priceUsd = prices.reference_prices[portfolio.crypto_id];
@@ -136,7 +158,32 @@ export function PortfolioDetailContent({
     [user.currency],
   );
 
+  const effectiveBalance = getEffectiveBalance(portfolio);
+  const effectiveCostBasis = getEffectiveCostBasisUsd(portfolio);
+
   const performance = useMemo(() => {
+    if (effectiveBalance === null) {
+      return null;
+    }
+
+    return calculatePortfolioPerformance({
+      balance: effectiveBalance,
+      costBasisUsd: effectiveCostBasis,
+      priceUser,
+      priceUsd,
+    });
+  }, [effectiveBalance, effectiveCostBasis, priceUser, priceUsd]);
+
+  const shareValue =
+    effectiveBalance !== null
+      ? calculateShareValue(effectiveBalance, priceUser)
+      : null;
+
+  const totalPerformance = useMemo(() => {
+    if (!showTotal || portfolio.balance === null || portfolio.balance === undefined) {
+      return null;
+    }
+
     return calculatePortfolioPerformance({
       balance: Number(portfolio.balance),
       costBasisUsd:
@@ -146,9 +193,7 @@ export function PortfolioDetailContent({
       priceUser,
       priceUsd,
     });
-  }, [portfolio, priceUser, priceUsd]);
-
-  const portfolioValue = performance?.portfolioValue;
+  }, [portfolio, priceUser, priceUsd, showTotal]);
 
   const handleSync = () => {
     startSyncTransition(async () => {
@@ -181,7 +226,15 @@ export function PortfolioDetailContent({
           </Link>
         </div>
 
-        {portfolio.sync_status === "failed" && portfolio.sync_error ? (
+        {!isOwner ? (
+          <div className="mb-6 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+            Du siehst dieses Portfolio als Betrachter.
+          </div>
+        ) : null}
+
+        {isOwner &&
+        portfolio.sync_status === "failed" &&
+        portfolio.sync_error ? (
           <div className="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {portfolio.sync_error}
             {!portfolio.wallet_source ? (
@@ -195,9 +248,12 @@ export function PortfolioDetailContent({
 
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2">
-            <h2 className="text-2xl font-semibold tracking-tight">
-              {portfolio.name}
-            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-2xl font-semibold tracking-tight">
+                {portfolio.name}
+              </h2>
+              {!isOwner ? <Badge variant="outline">Geteilt</Badge> : null}
+            </div>
             <p className="text-sm text-muted-foreground">
               <Badge variant="secondary" className="uppercase">
                 {portfolio.crypto_symbol}
@@ -216,35 +272,73 @@ export function PortfolioDetailContent({
               ) : null}
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setEditDialogOpen(true)}
-            >
-              <PencilIcon className="size-4" />
-              Bearbeiten
-            </Button>
-            <Button onClick={handleSync} disabled={isSyncing}>
-              <RefreshCwIcon
-                className={`size-4 ${isSyncing ? "animate-spin" : ""}`}
-              />
-              {isSyncing ? "Synchronisiere…" : "Jetzt synchronisieren"}
-            </Button>
-          </div>
+          {isOwner ? (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShareDialogOpen(true)}
+              >
+                <Share2Icon className="size-4" />
+                Teilen
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setEditDialogOpen(true)}
+              >
+                <PencilIcon className="size-4" />
+                Bearbeiten
+              </Button>
+              <Button onClick={handleSync} disabled={isSyncing}>
+                <RefreshCwIcon
+                  className={`size-4 ${isSyncing ? "animate-spin" : ""}`}
+                />
+                {isSyncing ? "Synchronisiere…" : "Jetzt synchronisieren"}
+              </Button>
+            </div>
+          ) : null}
         </div>
 
-        <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader>
-              <CardDescription>Bestand</CardDescription>
-              <CardTitle className="text-2xl">
-                {amountFormatter.format(Number(portfolio.balance))}{" "}
-                <span className="text-base font-medium uppercase text-muted-foreground">
-                  {portfolio.crypto_symbol}
-                </span>
-              </CardTitle>
-            </CardHeader>
-          </Card>
+        <div
+          className={`mb-8 grid gap-4 md:grid-cols-2 ${
+            hasShareAmount && showTotal
+              ? "lg:grid-cols-5"
+              : hasShareAmount || showTotal
+                ? "lg:grid-cols-4"
+                : "lg:grid-cols-3"
+          }`}
+        >
+          {hasShareAmount ? (
+            <Card>
+              <CardHeader>
+                <CardDescription>Dein Anteil</CardDescription>
+                <CardTitle className="text-2xl">
+                  {amountFormatter.format(
+                    Number(portfolio.share?.my_share_amount),
+                  )}{" "}
+                  <span className="text-base font-medium uppercase text-muted-foreground">
+                    {portfolio.crypto_symbol}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+            </Card>
+          ) : null}
+
+          {showTotal ? (
+            <Card>
+              <CardHeader>
+                <CardDescription>Bestand</CardDescription>
+                <CardTitle className="text-2xl">
+                  {portfolio.balance !== null && portfolio.balance !== undefined
+                    ? amountFormatter.format(Number(portfolio.balance))
+                    : "—"}{" "}
+                  <span className="text-base font-medium uppercase text-muted-foreground">
+                    {portfolio.crypto_symbol}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+            </Card>
+          ) : null}
+
           <Card>
             <CardHeader>
               <CardDescription>Aktueller Preis</CardDescription>
@@ -253,14 +347,22 @@ export function PortfolioDetailContent({
               </CardTitle>
             </CardHeader>
           </Card>
+
           <Card>
             <CardHeader>
-              <CardDescription>Portfoliowert</CardDescription>
+              <CardDescription>
+                {hasShareAmount && !showTotal ? "Wert deines Anteils" : "Portfoliowert"}
+              </CardDescription>
               <CardTitle className="text-2xl">
-                {portfolioValue !== undefined ? formatPrice(portfolioValue) : "—"}
+                {shareValue !== null
+                  ? formatPrice(shareValue)
+                  : performance !== null
+                    ? formatPrice(performance.portfolioValue)
+                    : "—"}
               </CardTitle>
             </CardHeader>
           </Card>
+
           <Card>
             <CardHeader>
               <CardDescription>Erfolg</CardDescription>
@@ -284,55 +386,81 @@ export function PortfolioDetailContent({
           </Card>
         </div>
 
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Transaktionen</h3>
+        {hasShareAmount && showTotal && totalPerformance ? (
+          <p className="mb-8 text-sm text-muted-foreground">
+            Gesamtwert des Portfolios:{" "}
+            {formatPrice(totalPerformance.portfolioValue)}
+          </p>
+        ) : null}
 
-          {movements.length === 0 ? (
-            <Empty className="border">
-              <EmptyHeader>
-                <EmptyTitle>Noch keine Transaktionen</EmptyTitle>
-                <EmptyDescription>
-                  Transaktionen werden automatisch von der Blockchain
-                  importiert, sobald die Synchronisation abgeschlossen ist.
-                </EmptyDescription>
-              </EmptyHeader>
-              <Button onClick={handleSync} disabled={isSyncing}>
-                Jetzt synchronisieren
-              </Button>
-            </Empty>
-          ) : (
-            <Card>
-              <CardContent className="pt-6">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Zeitpunkt</TableHead>
-                      <TableHead>Typ</TableHead>
-                      <TableHead className="text-right">Menge</TableHead>
-                      <TableHead>Tx-Hash</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {movements.map((movement) => (
-                      <MovementRow
-                        key={movement.id}
-                        movement={movement}
-                        cryptoSymbol={portfolio.crypto_symbol}
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        {showMovements ? (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Transaktionen</h3>
+
+            {movements.length === 0 ? (
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyTitle>Noch keine Transaktionen</EmptyTitle>
+                  <EmptyDescription>
+                    {isOwner
+                      ? "Transaktionen werden automatisch von der Blockchain importiert, sobald die Synchronisation abgeschlossen ist."
+                      : "Es sind noch keine Transaktionen für dieses Portfolio verfügbar."}
+                  </EmptyDescription>
+                </EmptyHeader>
+                {isOwner ? (
+                  <Button onClick={handleSync} disabled={isSyncing}>
+                    Jetzt synchronisieren
+                  </Button>
+                ) : null}
+              </Empty>
+            ) : (
+              <Card>
+                <CardContent className="pt-6">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Zeitpunkt</TableHead>
+                        <TableHead>Typ</TableHead>
+                        <TableHead className="text-right">Menge</TableHead>
+                        <TableHead>Tx-Hash</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {movements.map((movement) => (
+                        <MovementRow
+                          key={movement.id}
+                          movement={movement}
+                          cryptoSymbol={portfolio.crypto_symbol}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Transaktionsdetails sind für deine Freigabe nicht sichtbar.
+          </p>
+        )}
       </main>
 
-      <PortfolioEditDialog
-        portfolio={portfolio}
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-      />
+      {isOwner ? (
+        <>
+          <PortfolioEditDialog
+            portfolio={portfolio}
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+          />
+          <PortfolioShareDialog
+            portfolio={portfolio}
+            shares={shares}
+            open={shareDialogOpen}
+            onOpenChange={setShareDialogOpen}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

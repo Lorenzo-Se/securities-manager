@@ -352,9 +352,6 @@
                     },
                     "404": {
                         "description": "Portfolio nicht gefunden"
-                    },
-                    "422": {
-                        "description": "Validierungsfehler"
                     }
                 },
                 "security": [
@@ -442,6 +439,296 @@
                     },
                     "404": {
                         "description": "Portfolio nicht gefunden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/portfolios/{portfolio}/shares": {
+            "get": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Freigaben eines Portfolios abrufen",
+                "operationId": "listPortfolioShares",
+                "parameters": [
+                    {
+                        "name": "portfolio",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste der Freigaben",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PortfolioShare"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "404": {
+                        "description": "Portfolio nicht gefunden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Portfolio-Freigabe erstellen",
+                "operationId": "createPortfolioShare",
+                "parameters": [
+                    {
+                        "name": "portfolio",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "share_type"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "person@example.com"
+                                    },
+                                    "share_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "viewer",
+                                            "amount",
+                                            "percentage"
+                                        ]
+                                    },
+                                    "share_amount": {
+                                        "type": "string",
+                                        "example": "0.50000000",
+                                        "nullable": true
+                                    },
+                                    "share_percentage": {
+                                        "type": "string",
+                                        "example": "25.00",
+                                        "nullable": true
+                                    },
+                                    "show_total_balance": {
+                                        "type": "boolean",
+                                        "example": false
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Freigabe erstellt",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PortfolioShare"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "404": {
+                        "description": "Portfolio nicht gefunden"
+                    },
+                    "422": {
+                        "description": "Validierungsfehler"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/portfolios/{portfolio}/shares/{share}": {
+            "delete": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Portfolio-Freigabe widerrufen",
+                "operationId": "revokePortfolioShare",
+                "parameters": [
+                    {
+                        "name": "portfolio",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "share",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Freigabe widerrufen"
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "404": {
+                        "description": "Nicht gefunden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/portfolio-shares/invitations": {
+            "get": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Offene Portfolio-Einladungen abrufen",
+                "operationId": "listPortfolioShareInvitations",
+                "responses": {
+                    "200": {
+                        "description": "Liste der Einladungen",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PortfolioShareInvitation"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/portfolio-shares/{share}/accept": {
+            "post": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Portfolio-Einladung annehmen",
+                "operationId": "acceptPortfolioShare",
+                "parameters": [
+                    {
+                        "name": "share",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Einladung angenommen",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PortfolioShareInvitation"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "404": {
+                        "description": "Nicht gefunden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/portfolio-shares/{share}/decline": {
+            "post": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Portfolio-Einladung ablehnen",
+                "operationId": "declinePortfolioShare",
+                "parameters": [
+                    {
+                        "name": "share",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Einladung abgelehnt",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PortfolioShareInvitation"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "404": {
+                        "description": "Nicht gefunden"
                     }
                 },
                 "security": [
@@ -605,8 +892,7 @@
                     "wallet_source_type",
                     "wallet_source",
                     "sync_status",
-                    "balance",
-                    "cost_basis_usd",
+                    "access_role",
                     "created_at",
                     "updated_at"
                 ],
@@ -666,11 +952,28 @@
                     },
                     "balance": {
                         "type": "string",
-                        "example": "1.25000000"
+                        "example": "1.25000000",
+                        "nullable": true
                     },
                     "cost_basis_usd": {
                         "type": "string",
                         "example": "50000.00000000",
+                        "nullable": true
+                    },
+                    "access_role": {
+                        "type": "string",
+                        "example": "owner",
+                        "enum": [
+                            "owner",
+                            "viewer"
+                        ]
+                    },
+                    "share": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/PortfolioShareInfo"
+                            }
+                        ],
                         "nullable": true
                     },
                     "created_at": {
@@ -680,6 +983,240 @@
                     "updated_at": {
                         "type": "string",
                         "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "PortfolioShareInfo": {
+                "required": [
+                    "type",
+                    "show_total_balance"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "example": "amount",
+                        "enum": [
+                            "viewer",
+                            "amount",
+                            "percentage"
+                        ]
+                    },
+                    "amount": {
+                        "type": "string",
+                        "example": "0.50000000",
+                        "nullable": true
+                    },
+                    "percentage": {
+                        "type": "string",
+                        "example": "25.00",
+                        "nullable": true
+                    },
+                    "show_total_balance": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "my_share_amount": {
+                        "type": "string",
+                        "example": "0.50000000",
+                        "nullable": true
+                    },
+                    "my_share_cost_basis_usd": {
+                        "type": "string",
+                        "example": "12500.00000000",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "PortfolioShare": {
+                "required": [
+                    "id",
+                    "portfolio_id",
+                    "invited_email",
+                    "invited_by",
+                    "share_type",
+                    "show_total_balance",
+                    "status",
+                    "created_at",
+                    "updated_at"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "portfolio_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "invited_email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "person@example.com"
+                    },
+                    "invited_user": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/PortfolioShareUser"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "invited_by": {
+                        "$ref": "#/components/schemas/PortfolioShareUser"
+                    },
+                    "share_type": {
+                        "type": "string",
+                        "enum": [
+                            "viewer",
+                            "amount",
+                            "percentage"
+                        ]
+                    },
+                    "share_amount": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "share_percentage": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "show_total_balance": {
+                        "type": "boolean"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "accepted",
+                            "declined",
+                            "revoked"
+                        ]
+                    },
+                    "accepted_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "declined_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "PortfolioShareInvitation": {
+                "required": [
+                    "id",
+                    "portfolio",
+                    "invited_by",
+                    "share_type",
+                    "show_total_balance",
+                    "status",
+                    "created_at"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "portfolio": {
+                        "$ref": "#/components/schemas/PortfolioShareInvitationPortfolio"
+                    },
+                    "invited_by": {
+                        "$ref": "#/components/schemas/PortfolioShareUser"
+                    },
+                    "share_type": {
+                        "type": "string",
+                        "enum": [
+                            "viewer",
+                            "amount",
+                            "percentage"
+                        ]
+                    },
+                    "share_amount": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "share_percentage": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "show_total_balance": {
+                        "type": "boolean"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "accepted",
+                            "declined",
+                            "revoked"
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "PortfolioShareInvitationPortfolio": {
+                "required": [
+                    "id",
+                    "name",
+                    "crypto_symbol",
+                    "crypto_name"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Mein BTC"
+                    },
+                    "crypto_symbol": {
+                        "type": "string",
+                        "example": "btc"
+                    },
+                    "crypto_name": {
+                        "type": "string",
+                        "example": "Bitcoin"
+                    }
+                },
+                "type": "object"
+            },
+            "PortfolioShareUser": {
+                "required": [
+                    "id",
+                    "name",
+                    "email"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Max Mustermann"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "max@example.com"
                     }
                 },
                 "type": "object"

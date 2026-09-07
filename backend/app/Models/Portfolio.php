@@ -56,6 +56,11 @@ class Portfolio extends Model
         return $this->hasMany(PortfolioMovement::class);
     }
 
+    public function shares(): HasMany
+    {
+        return $this->hasMany(PortfolioShare::class);
+    }
+
     public function balanceAt(DateTimeInterface $at): string
     {
         $movements = $this->movements()

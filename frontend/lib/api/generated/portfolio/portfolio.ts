@@ -7,8 +7,11 @@
  */
 import type {
   CreatePortfolioBody,
+  CreatePortfolioShareBody,
   Portfolio,
   PortfolioMovement,
+  PortfolioShare,
+  PortfolioShareInvitation,
   UpdatePortfolioBody
 } from '../models';
 
@@ -212,15 +215,10 @@ export type updatePortfolioResponse404 = {
   status: 404
 }
 
-export type updatePortfolioResponse422 = {
-  data: void
-  status: 422
-}
-
 export type updatePortfolioResponseSuccess = (updatePortfolioResponse200) & {
   headers: Headers;
 };
-export type updatePortfolioResponseError = (updatePortfolioResponse401 | updatePortfolioResponse404 | updatePortfolioResponse422) & {
+export type updatePortfolioResponseError = (updatePortfolioResponse401 | updatePortfolioResponse404) & {
   headers: Headers;
 };
 
@@ -338,6 +336,291 @@ export const listPortfolioMovements = async (portfolio: number, options?: Parame
   {
     ...options,
     method: 'GET'
+
+
+  }
+);}
+
+
+export type listPortfolioSharesResponse200 = {
+  data: PortfolioShare[]
+  status: 200
+}
+
+export type listPortfolioSharesResponse401 = {
+  data: void
+  status: 401
+}
+
+export type listPortfolioSharesResponse404 = {
+  data: void
+  status: 404
+}
+
+export type listPortfolioSharesResponseSuccess = (listPortfolioSharesResponse200) & {
+  headers: Headers;
+};
+export type listPortfolioSharesResponseError = (listPortfolioSharesResponse401 | listPortfolioSharesResponse404) & {
+  headers: Headers;
+};
+
+export type listPortfolioSharesResponse = (listPortfolioSharesResponseSuccess | listPortfolioSharesResponseError)
+
+export const getListPortfolioSharesUrl = (portfolio: number,) => {
+
+
+
+
+  return `/portfolios/${portfolio}/shares`
+}
+
+/**
+ * @summary Freigaben eines Portfolios abrufen
+ */
+export const listPortfolioShares = async (portfolio: number, options?: Parameters<typeof customInstance>[1]): Promise<listPortfolioSharesResponse> => {
+
+  return customInstance<listPortfolioSharesResponse>(getListPortfolioSharesUrl(portfolio),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+export type createPortfolioShareResponse201 = {
+  data: PortfolioShare
+  status: 201
+}
+
+export type createPortfolioShareResponse401 = {
+  data: void
+  status: 401
+}
+
+export type createPortfolioShareResponse404 = {
+  data: void
+  status: 404
+}
+
+export type createPortfolioShareResponse422 = {
+  data: void
+  status: 422
+}
+
+export type createPortfolioShareResponseSuccess = (createPortfolioShareResponse201) & {
+  headers: Headers;
+};
+export type createPortfolioShareResponseError = (createPortfolioShareResponse401 | createPortfolioShareResponse404 | createPortfolioShareResponse422) & {
+  headers: Headers;
+};
+
+export type createPortfolioShareResponse = (createPortfolioShareResponseSuccess | createPortfolioShareResponseError)
+
+export const getCreatePortfolioShareUrl = (portfolio: number,) => {
+
+
+
+
+  return `/portfolios/${portfolio}/shares`
+}
+
+/**
+ * @summary Portfolio-Freigabe erstellen
+ */
+export const createPortfolioShare = async (portfolio: number,
+    createPortfolioShareBody: CreatePortfolioShareBody, options?: Parameters<typeof customInstance>[1]): Promise<createPortfolioShareResponse> => {
+
+  return customInstance<createPortfolioShareResponse>(getCreatePortfolioShareUrl(portfolio),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createPortfolioShareBody)
+  }
+);}
+
+
+export type revokePortfolioShareResponse204 = {
+  data: void
+  status: 204
+}
+
+export type revokePortfolioShareResponse401 = {
+  data: void
+  status: 401
+}
+
+export type revokePortfolioShareResponse404 = {
+  data: void
+  status: 404
+}
+
+export type revokePortfolioShareResponseSuccess = (revokePortfolioShareResponse204) & {
+  headers: Headers;
+};
+export type revokePortfolioShareResponseError = (revokePortfolioShareResponse401 | revokePortfolioShareResponse404) & {
+  headers: Headers;
+};
+
+export type revokePortfolioShareResponse = (revokePortfolioShareResponseSuccess | revokePortfolioShareResponseError)
+
+export const getRevokePortfolioShareUrl = (portfolio: number,
+    share: number,) => {
+
+
+
+
+  return `/portfolios/${portfolio}/shares/${share}`
+}
+
+/**
+ * @summary Portfolio-Freigabe widerrufen
+ */
+export const revokePortfolioShare = async (portfolio: number,
+    share: number, options?: Parameters<typeof customInstance>[1]): Promise<revokePortfolioShareResponse> => {
+
+  return customInstance<revokePortfolioShareResponse>(getRevokePortfolioShareUrl(portfolio,share),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+export type listPortfolioShareInvitationsResponse200 = {
+  data: PortfolioShareInvitation[]
+  status: 200
+}
+
+export type listPortfolioShareInvitationsResponse401 = {
+  data: void
+  status: 401
+}
+
+export type listPortfolioShareInvitationsResponseSuccess = (listPortfolioShareInvitationsResponse200) & {
+  headers: Headers;
+};
+export type listPortfolioShareInvitationsResponseError = (listPortfolioShareInvitationsResponse401) & {
+  headers: Headers;
+};
+
+export type listPortfolioShareInvitationsResponse = (listPortfolioShareInvitationsResponseSuccess | listPortfolioShareInvitationsResponseError)
+
+export const getListPortfolioShareInvitationsUrl = () => {
+
+
+
+
+  return `/portfolio-shares/invitations`
+}
+
+/**
+ * @summary Offene Portfolio-Einladungen abrufen
+ */
+export const listPortfolioShareInvitations = async ( options?: Parameters<typeof customInstance>[1]): Promise<listPortfolioShareInvitationsResponse> => {
+
+  return customInstance<listPortfolioShareInvitationsResponse>(getListPortfolioShareInvitationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+export type acceptPortfolioShareResponse200 = {
+  data: PortfolioShareInvitation
+  status: 200
+}
+
+export type acceptPortfolioShareResponse401 = {
+  data: void
+  status: 401
+}
+
+export type acceptPortfolioShareResponse404 = {
+  data: void
+  status: 404
+}
+
+export type acceptPortfolioShareResponseSuccess = (acceptPortfolioShareResponse200) & {
+  headers: Headers;
+};
+export type acceptPortfolioShareResponseError = (acceptPortfolioShareResponse401 | acceptPortfolioShareResponse404) & {
+  headers: Headers;
+};
+
+export type acceptPortfolioShareResponse = (acceptPortfolioShareResponseSuccess | acceptPortfolioShareResponseError)
+
+export const getAcceptPortfolioShareUrl = (share: number,) => {
+
+
+
+
+  return `/portfolio-shares/${share}/accept`
+}
+
+/**
+ * @summary Portfolio-Einladung annehmen
+ */
+export const acceptPortfolioShare = async (share: number, options?: Parameters<typeof customInstance>[1]): Promise<acceptPortfolioShareResponse> => {
+
+  return customInstance<acceptPortfolioShareResponse>(getAcceptPortfolioShareUrl(share),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+export type declinePortfolioShareResponse200 = {
+  data: PortfolioShareInvitation
+  status: 200
+}
+
+export type declinePortfolioShareResponse401 = {
+  data: void
+  status: 401
+}
+
+export type declinePortfolioShareResponse404 = {
+  data: void
+  status: 404
+}
+
+export type declinePortfolioShareResponseSuccess = (declinePortfolioShareResponse200) & {
+  headers: Headers;
+};
+export type declinePortfolioShareResponseError = (declinePortfolioShareResponse401 | declinePortfolioShareResponse404) & {
+  headers: Headers;
+};
+
+export type declinePortfolioShareResponse = (declinePortfolioShareResponseSuccess | declinePortfolioShareResponseError)
+
+export const getDeclinePortfolioShareUrl = (share: number,) => {
+
+
+
+
+  return `/portfolio-shares/${share}/decline`
+}
+
+/**
+ * @summary Portfolio-Einladung ablehnen
+ */
+export const declinePortfolioShare = async (share: number, options?: Parameters<typeof customInstance>[1]): Promise<declinePortfolioShareResponse> => {
+
+  return customInstance<declinePortfolioShareResponse>(getDeclinePortfolioShareUrl(share),
+  {
+    ...options,
+    method: 'POST'
 
 
   }

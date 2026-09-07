@@ -5,12 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Portfolio;
 use App\Models\PortfolioMovement;
+use App\Services\Portfolio\PortfolioAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 class PortfolioMovementController extends Controller
 {
+    public function __construct(
+        private readonly PortfolioAccessService $accessService,
+    ) {}
+
     #[OA\Get(
         path: '/portfolios/{portfolio}/movements',
         operationId: 'listPortfolioMovements',
@@ -40,7 +45,13 @@ class PortfolioMovementController extends Controller
     )]
     public function index(Request $request, Portfolio $portfolio): JsonResponse
     {
-        $this->ensurePortfolioOwnership($request, $portfolio);
+        if (! $this->accessService->canView($portfolio, $request->user())) {
+            abort(404);
+        }
+
+        if (! $this->accessService->canViewMovements($portfolio, $request->user())) {
+            return response()->json([]);
+        }
 
         $movements = $portfolio->movements()
             ->orderByDesc('occurred_at')
@@ -50,13 +61,6 @@ class PortfolioMovementController extends Controller
         return response()->json(
             $movements->map(fn (PortfolioMovement $movement) => $this->formatMovement($movement)),
         );
-    }
-
-    private function ensurePortfolioOwnership(Request $request, Portfolio $portfolio): void
-    {
-        if ($portfolio->user_id !== $request->user()->id) {
-            abort(404);
-        }
     }
 
     /**

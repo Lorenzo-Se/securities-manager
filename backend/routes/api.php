@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\CryptoController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\PortfolioController;
 use App\Http\Controllers\Api\PortfolioMovementController;
+use App\Http\Controllers\Api\PortfolioShareController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,4 +22,10 @@ Route::middleware('auth.keycloak')->group(function () {
     Route::post('/portfolios/{portfolio}/sync', [PortfolioController::class, 'sync']);
     Route::delete('/portfolios/{portfolio}', [PortfolioController::class, 'destroy']);
     Route::get('/portfolios/{portfolio}/movements', [PortfolioMovementController::class, 'index']);
+    Route::get('/portfolios/{portfolio}/shares', [PortfolioShareController::class, 'index']);
+    Route::post('/portfolios/{portfolio}/shares', [PortfolioShareController::class, 'store']);
+    Route::delete('/portfolios/{portfolio}/shares/{share}', [PortfolioShareController::class, 'destroy']);
+    Route::get('/portfolio-shares/invitations', [PortfolioShareController::class, 'invitations']);
+    Route::post('/portfolio-shares/{share}/accept', [PortfolioShareController::class, 'accept']);
+    Route::post('/portfolio-shares/{share}/decline', [PortfolioShareController::class, 'decline']);
 });

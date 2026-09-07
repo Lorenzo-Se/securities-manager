@@ -7,6 +7,8 @@
  */
 
 export * from './createPortfolioBody';
+export * from './createPortfolioShareBody';
+export * from './createPortfolioShareBodyShareType';
 export * from './cryptoCoin';
 export * from './cryptoCoinWalletSourceType';
 export * from './cryptoPrices';
@@ -17,8 +19,19 @@ export * from './getCryptoPricesParams';
 export * from './getHealth200';
 export * from './listCryptoCoinsParams';
 export * from './portfolio';
+export * from './portfolioAccessRole';
 export * from './portfolioMovement';
 export * from './portfolioMovementType';
+export * from './portfolioShare';
+export * from './portfolioShareInfo';
+export * from './portfolioShareInfoType';
+export * from './portfolioShareInvitation';
+export * from './portfolioShareInvitationPortfolio';
+export * from './portfolioShareInvitationShareType';
+export * from './portfolioShareInvitationStatus';
+export * from './portfolioShareShareType';
+export * from './portfolioShareStatus';
+export * from './portfolioShareUser';
 export * from './portfolioSyncStatus';
 export * from './portfolioWalletSourceType';
 export * from './updateAuthenticatedUser200';

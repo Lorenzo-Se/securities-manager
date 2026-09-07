@@ -2,6 +2,8 @@
 
 namespace App\Services\Keycloak;
 
+use App\Enums\PortfolioShareStatus;
+use App\Models\PortfolioShare;
 use App\Models\User;
 use Illuminate\Support\Str;
 
@@ -24,7 +26,7 @@ class UserProvisioner
             $email = "{$keycloakId}@keycloak.local";
         }
 
-        return User::query()->updateOrCreate(
+        $user = User::query()->updateOrCreate(
             ['keycloak_id' => $keycloakId],
             [
                 'name' => $name,
@@ -33,5 +35,13 @@ class UserProvisioner
                 'password' => Str::password(32),
             ],
         );
+
+        PortfolioShare::query()
+            ->where('invited_email', Str::lower($email))
+            ->where('status', PortfolioShareStatus::Pending)
+            ->whereNull('invited_user_id')
+            ->update(['invited_user_id' => $user->id]);
+
+        return $user;
     }
 }

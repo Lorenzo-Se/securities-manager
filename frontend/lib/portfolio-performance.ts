@@ -11,6 +11,123 @@ export type PortfolioPerformance = {
   profitPercent: number;
 };
 
+export function getEffectiveBalance(portfolio: {
+  balance?: string | null;
+  share?: {
+    my_share_amount?: string | null;
+    type?: string;
+  } | null;
+}): number | null {
+  if (
+    portfolio.share?.my_share_amount !== null &&
+    portfolio.share?.my_share_amount !== undefined
+  ) {
+    return Number(portfolio.share.my_share_amount);
+  }
+
+  if (portfolio.balance === null || portfolio.balance === undefined) {
+    return null;
+  }
+
+  return Number(portfolio.balance);
+}
+
+export function getEffectiveCostBasisUsd(portfolio: {
+  balance?: string | null;
+  cost_basis_usd?: string | null;
+  share?: {
+    my_share_amount?: string | null;
+    my_share_cost_basis_usd?: string | null;
+    amount?: string | null;
+    percentage?: string | null;
+    type?: string;
+  } | null;
+}): number | null {
+  if (
+    portfolio.share?.my_share_cost_basis_usd !== null &&
+    portfolio.share?.my_share_cost_basis_usd !== undefined
+  ) {
+    return Number(portfolio.share.my_share_cost_basis_usd);
+  }
+
+  if (portfolio.cost_basis_usd === null || portfolio.cost_basis_usd === undefined) {
+    return null;
+  }
+
+  const totalCostBasis = Number(portfolio.cost_basis_usd);
+
+  if (!portfolio.share || portfolio.share.type === "viewer") {
+    return totalCostBasis;
+  }
+
+  if (portfolio.share.type === "percentage" && portfolio.share.percentage) {
+    return totalCostBasis * (Number(portfolio.share.percentage) / 100);
+  }
+
+  if (
+    portfolio.share.type === "amount" &&
+    portfolio.share.amount &&
+    portfolio.balance
+  ) {
+    const totalBalance = Number(portfolio.balance);
+
+    if (totalBalance <= 0) {
+      return null;
+    }
+
+    return totalCostBasis * (Number(portfolio.share.amount) / totalBalance);
+  }
+
+  return totalCostBasis;
+}
+
+export function shouldShowTotalPortfolioValue(portfolio: {
+  access_role: string;
+  share?: {
+    show_total_balance?: boolean;
+    type?: string;
+  } | null;
+}): boolean {
+  if (portfolio.access_role === "owner") {
+    return true;
+  }
+
+  if (!portfolio.share || portfolio.share.type === "viewer") {
+    return true;
+  }
+
+  return portfolio.share.show_total_balance === true;
+}
+
+export function shouldShowMovements(portfolio: {
+  access_role: string;
+  share?: {
+    show_total_balance?: boolean;
+    type?: string;
+  } | null;
+}): boolean {
+  if (portfolio.access_role === "owner") {
+    return true;
+  }
+
+  if (!portfolio.share || portfolio.share.type === "viewer") {
+    return true;
+  }
+
+  return portfolio.share.show_total_balance === true;
+}
+
+export function calculateShareValue(
+  balance: number,
+  priceUser: number | undefined,
+): number | null {
+  if (priceUser === undefined) {
+    return null;
+  }
+
+  return balance * priceUser;
+}
+
 export function calculatePortfolioPerformance({
   balance,
   costBasisUsd,

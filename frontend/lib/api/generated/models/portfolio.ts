@@ -5,6 +5,8 @@
  * OpenAPI-Dokumentation für die Securities Manager API
  * OpenAPI spec version: 1.0.0
  */
+import type { PortfolioAccessRole } from './portfolioAccessRole';
+import type { PortfolioShareInfo } from './portfolioShareInfo';
 import type { PortfolioSyncStatus } from './portfolioSyncStatus';
 import type { PortfolioWalletSourceType } from './portfolioWalletSourceType';
 
@@ -23,9 +25,12 @@ export interface Portfolio {
   sync_error?: string | null;
   /** @nullable */
   last_synced_at?: string | null;
-  balance: string;
   /** @nullable */
-  cost_basis_usd: string | null;
+  balance?: string | null;
+  /** @nullable */
+  cost_basis_usd?: string | null;
+  access_role: PortfolioAccessRole;
+  share?: PortfolioShareInfo | null;
   created_at: string;
   updated_at: string;
 }

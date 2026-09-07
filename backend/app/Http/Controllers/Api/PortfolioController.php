@@ -8,7 +8,8 @@ use App\Http\Requests\StorePortfolioRequest;
 use App\Http\Requests\UpdatePortfolioRequest;
 use App\Jobs\SyncPortfolioJob;
 use App\Models\Portfolio;
-use App\Services\Portfolio\PortfolioCostBasisCalculator;
+use App\Services\Portfolio\PortfolioAccessService;
+use App\Services\Portfolio\PortfolioPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -16,7 +17,8 @@ use OpenApi\Attributes as OA;
 class PortfolioController extends Controller
 {
     public function __construct(
-        private readonly PortfolioCostBasisCalculator $costBasisCalculator,
+        private readonly PortfolioAccessService $accessService,
+        private readonly PortfolioPresenter $presenter,
     ) {}
 
     #[OA\Get(
@@ -39,13 +41,26 @@ class PortfolioController extends Controller
     )]
     public function index(Request $request): JsonResponse
     {
-        $portfolios = $request->user()
-            ->portfolios()
+        $user = $request->user();
+
+        $ownedPortfolios = $user->portfolios()
             ->with('movements')
             ->latest()
             ->get();
 
-        return response()->json($portfolios->map(fn (Portfolio $portfolio) => $this->formatPortfolio($portfolio)));
+        $sharedPortfolios = $user->sharedPortfolios()
+            ->with('movements')
+            ->latest('portfolios.created_at')
+            ->get();
+
+        $portfolios = $ownedPortfolios
+            ->concat($sharedPortfolios)
+            ->unique('id')
+            ->values();
+
+        return response()->json(
+            $portfolios->map(fn (Portfolio $portfolio) => $this->presenter->format($portfolio, $user)),
+        );
     }
 
     #[OA\Get(
@@ -74,13 +89,13 @@ class PortfolioController extends Controller
     )]
     public function show(Request $request, Portfolio $portfolio): JsonResponse
     {
-        if ($portfolio->user_id !== $request->user()->id) {
+        if (! $this->accessService->canView($portfolio, $request->user())) {
             abort(404);
         }
 
         $portfolio->load('movements');
 
-        return response()->json($this->formatPortfolio($portfolio));
+        return response()->json($this->presenter->format($portfolio, $request->user()));
     }
 
     #[OA\Post(
@@ -129,7 +144,7 @@ class PortfolioController extends Controller
 
         SyncPortfolioJob::dispatch($portfolio->id);
 
-        return response()->json($this->formatPortfolio($portfolio), 201);
+        return response()->json($this->presenter->format($portfolio, $request->user()), 201);
     }
 
     #[OA\Patch(
@@ -163,14 +178,13 @@ class PortfolioController extends Controller
             ),
             new OA\Response(response: 401, description: 'Nicht authentifiziert'),
             new OA\Response(response: 404, description: 'Portfolio nicht gefunden'),
-            new OA\Response(response: 422, description: 'Validierungsfehler'),
         ],
     )]
     public function update(
         UpdatePortfolioRequest $request,
         Portfolio $portfolio,
     ): JsonResponse {
-        if ($portfolio->user_id !== $request->user()->id) {
+        if (! $this->accessService->canManage($portfolio, $request->user())) {
             abort(404);
         }
 
@@ -197,7 +211,7 @@ class PortfolioController extends Controller
             SyncPortfolioJob::dispatch($portfolio->id);
         }
 
-        return response()->json($this->formatPortfolio($portfolio->fresh()));
+        return response()->json($this->presenter->format($portfolio->fresh(), $request->user()));
     }
 
     #[OA\Post(
@@ -226,7 +240,7 @@ class PortfolioController extends Controller
     )]
     public function sync(Request $request, Portfolio $portfolio): JsonResponse
     {
-        if ($portfolio->user_id !== $request->user()->id) {
+        if (! $this->accessService->canManage($portfolio, $request->user())) {
             abort(404);
         }
 
@@ -237,7 +251,7 @@ class PortfolioController extends Controller
 
         SyncPortfolioJob::dispatch($portfolio->id);
 
-        return response()->json($this->formatPortfolio($portfolio->fresh()), 202);
+        return response()->json($this->presenter->format($portfolio->fresh(), $request->user()), 202);
     }
 
     #[OA\Delete(
@@ -262,37 +276,12 @@ class PortfolioController extends Controller
     )]
     public function destroy(Request $request, Portfolio $portfolio): JsonResponse
     {
-        if ($portfolio->user_id !== $request->user()->id) {
+        if (! $this->accessService->canManage($portfolio, $request->user())) {
             abort(404);
         }
 
         $portfolio->delete();
 
         return response()->json(null, 204);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function formatPortfolio(Portfolio $portfolio): array
-    {
-        $costBasisUsd = $this->costBasisCalculator->calculate($portfolio->movements);
-
-        return [
-            'id' => $portfolio->id,
-            'name' => $portfolio->name,
-            'crypto_id' => $portfolio->crypto_id,
-            'crypto_symbol' => $portfolio->crypto_symbol,
-            'crypto_name' => $portfolio->crypto_name,
-            'wallet_source_type' => $portfolio->wallet_source_type?->value,
-            'wallet_source' => $portfolio->maskedWalletSource(),
-            'sync_status' => $portfolio->sync_status?->value ?? SyncStatus::Failed->value,
-            'sync_error' => $portfolio->sync_error,
-            'last_synced_at' => $portfolio->last_synced_at?->toIso8601String(),
-            'balance' => $portfolio->balance,
-            'cost_basis_usd' => $costBasisUsd,
-            'created_at' => $portfolio->created_at?->toIso8601String(),
-            'updated_at' => $portfolio->updated_at?->toIso8601String(),
-        ];
     }
 }
