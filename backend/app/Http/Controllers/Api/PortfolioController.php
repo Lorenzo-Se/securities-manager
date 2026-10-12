@@ -10,15 +10,18 @@ use App\Jobs\SyncPortfolioJob;
 use App\Models\Portfolio;
 use App\Services\Portfolio\PortfolioAccessService;
 use App\Services\Portfolio\PortfolioPresenter;
+use App\Services\Portfolio\PortfolioValueHistoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
+use RuntimeException;
 
 class PortfolioController extends Controller
 {
     public function __construct(
         private readonly PortfolioAccessService $accessService,
         private readonly PortfolioPresenter $presenter,
+        private readonly PortfolioValueHistoryService $valueHistoryService,
     ) {}
 
     #[OA\Get(
@@ -96,6 +99,76 @@ class PortfolioController extends Controller
         $portfolio->load('movements');
 
         return response()->json($this->presenter->format($portfolio, $request->user()));
+    }
+
+    #[OA\Get(
+        path: '/portfolios/{portfolio}/value-history',
+        operationId: 'getPortfolioValueHistory',
+        summary: 'Wertverlauf eines Portfolios abrufen',
+        tags: ['Portfolio'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(
+                name: 'portfolio',
+                in: 'path',
+                required: true,
+                schema: new OA\Schema(type: 'integer'),
+            ),
+            new OA\Parameter(
+                name: 'days',
+                in: 'query',
+                required: false,
+                schema: new OA\Schema(
+                    oneOf: [
+                        new OA\Schema(type: 'integer', enum: [7, 30, 90, 365]),
+                        new OA\Schema(type: 'string', enum: ['max']),
+                    ],
+                    default: 30,
+                ),
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Wertverlauf',
+                content: new OA\JsonContent(ref: '#/components/schemas/PortfolioValueHistory'),
+            ),
+            new OA\Response(response: 401, description: 'Nicht authentifiziert'),
+            new OA\Response(response: 404, description: 'Portfolio nicht gefunden'),
+            new OA\Response(response: 422, description: 'Validierungsfehler'),
+            new OA\Response(response: 503, description: 'Marktdaten nicht verfügbar'),
+        ],
+    )]
+    public function valueHistory(Request $request, Portfolio $portfolio): JsonResponse
+    {
+        if (! $this->accessService->canView($portfolio, $request->user())) {
+            abort(404);
+        }
+
+        $days = $request->query('days', 30);
+
+        if (is_string($days) && strtolower($days) === 'max') {
+            $days = 'max';
+        } elseif (is_numeric($days) && in_array((int) $days, [7, 30, 90, 365], true)) {
+            $days = (int) $days;
+        } else {
+            return response()->json([
+                'message' => 'The days field is invalid.',
+                'errors' => [
+                    'days' => ['The days field must be one of: 7, 30, 90, 365, max.'],
+                ],
+            ], 422);
+        }
+
+        try {
+            return response()->json(
+                $this->valueHistoryService->build($portfolio, $request->user(), $days),
+            );
+        } catch (RuntimeException) {
+            return response()->json([
+                'message' => 'Marktdaten sind derzeit nicht verfügbar. Bitte versuche es später erneut.',
+            ], 503);
+        }
     }
 
     #[OA\Post(

@@ -53,3 +53,25 @@ it('returns zero cost basis for empty movements', function () {
 
     expect($calculator->calculate(collect()))->toBe('0.00000000');
 });
+
+it('calculates cost basis only from movements before a timestamp', function () {
+    $user = User::factory()->create();
+    $portfolio = Portfolio::factory()->for($user)->create();
+    $calculator = new PortfolioCostBasisCalculator;
+
+    PortfolioMovement::factory()->for($portfolio)->deposit()->create([
+        'amount' => '1',
+        'unit_price_usd' => '10000',
+        'occurred_at' => '2026-08-10 10:00:00',
+    ]);
+    PortfolioMovement::factory()->for($portfolio)->deposit()->create([
+        'amount' => '1',
+        'unit_price_usd' => '20000',
+        'occurred_at' => '2026-08-11 10:00:00',
+    ]);
+
+    $movements = $portfolio->movements()->get();
+    $timestamp = strtotime('2026-08-10 12:00:00');
+
+    expect($calculator->costBasisAtTimestamp($movements, $timestamp))->toBe('10000.00000000');
+});

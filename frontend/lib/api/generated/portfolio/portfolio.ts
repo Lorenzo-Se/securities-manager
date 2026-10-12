@@ -8,10 +8,12 @@
 import type {
   CreatePortfolioBody,
   CreatePortfolioShareBody,
+  GetPortfolioValueHistoryParams,
   Portfolio,
   PortfolioMovement,
   PortfolioShare,
   PortfolioShareInvitation,
+  PortfolioValueHistory,
   UpdatePortfolioBody
 } from '../models';
 
@@ -244,6 +246,72 @@ export const updatePortfolio = async (portfolio: number,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updatePortfolioBody)
+  }
+);}
+
+
+export type getPortfolioValueHistoryResponse200 = {
+  data: PortfolioValueHistory
+  status: 200
+}
+
+export type getPortfolioValueHistoryResponse401 = {
+  data: void
+  status: 401
+}
+
+export type getPortfolioValueHistoryResponse404 = {
+  data: void
+  status: 404
+}
+
+export type getPortfolioValueHistoryResponse422 = {
+  data: void
+  status: 422
+}
+
+export type getPortfolioValueHistoryResponse503 = {
+  data: void
+  status: 503
+}
+
+export type getPortfolioValueHistoryResponseSuccess = (getPortfolioValueHistoryResponse200) & {
+  headers: Headers;
+};
+export type getPortfolioValueHistoryResponseError = (getPortfolioValueHistoryResponse401 | getPortfolioValueHistoryResponse404 | getPortfolioValueHistoryResponse422 | getPortfolioValueHistoryResponse503) & {
+  headers: Headers;
+};
+
+export type getPortfolioValueHistoryResponse = (getPortfolioValueHistoryResponseSuccess | getPortfolioValueHistoryResponseError)
+
+export const getGetPortfolioValueHistoryUrl = (portfolio: number,
+    params?: GetPortfolioValueHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/portfolios/${portfolio}/value-history?${stringifiedParams}` : `/portfolios/${portfolio}/value-history`
+}
+
+/**
+ * @summary Wertverlauf eines Portfolios abrufen
+ */
+export const getPortfolioValueHistory = async (portfolio: number,
+    params?: GetPortfolioValueHistoryParams, options?: Parameters<typeof customInstance>[1]): Promise<getPortfolioValueHistoryResponse> => {
+
+  return customInstance<getPortfolioValueHistoryResponse>(getGetPortfolioValueHistoryUrl(portfolio,params),
+  {
+    ...options,
+    method: 'GET'
+
+
   }
 );}
 

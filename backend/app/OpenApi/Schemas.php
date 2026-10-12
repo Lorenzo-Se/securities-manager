@@ -120,6 +120,32 @@ use OpenApi\Attributes as OA;
     ],
 )]
 #[OA\Schema(
+    schema: 'PortfolioValueHistoryPoint',
+    required: ['date', 'value', 'profit_amount', 'profit_percent'],
+    properties: [
+        new OA\Property(property: 'date', type: 'string', format: 'date-time', example: '2026-01-15T00:00:00+00:00'),
+        new OA\Property(property: 'value', type: 'string', example: '12345.67'),
+        new OA\Property(property: 'profit_amount', type: 'string', nullable: true, example: '2345.67'),
+        new OA\Property(property: 'profit_percent', type: 'string', nullable: true, example: '23.45'),
+    ],
+)]
+#[OA\Schema(
+    schema: 'PortfolioValueHistory',
+    required: ['currency', 'days', 'points'],
+    properties: [
+        new OA\Property(property: 'currency', type: 'string', example: 'eur'),
+        new OA\Property(property: 'days', oneOf: [
+            new OA\Schema(type: 'integer', example: 30),
+            new OA\Schema(type: 'string', example: 'max'),
+        ]),
+        new OA\Property(
+            property: 'points',
+            type: 'array',
+            items: new OA\Items(ref: '#/components/schemas/PortfolioValueHistoryPoint'),
+        ),
+    ],
+)]
+#[OA\Schema(
     schema: 'CryptoPrices',
     required: ['currency', 'prices', 'reference_currency', 'reference_prices'],
     properties: [

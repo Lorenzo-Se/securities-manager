@@ -18,6 +18,7 @@ Route::middleware('auth.keycloak')->group(function () {
     Route::get('/portfolios', [PortfolioController::class, 'index']);
     Route::post('/portfolios', [PortfolioController::class, 'store']);
     Route::get('/portfolios/{portfolio}', [PortfolioController::class, 'show']);
+    Route::get('/portfolios/{portfolio}/value-history', [PortfolioController::class, 'valueHistory']);
     Route::patch('/portfolios/{portfolio}', [PortfolioController::class, 'update']);
     Route::post('/portfolios/{portfolio}/sync', [PortfolioController::class, 'sync']);
     Route::delete('/portfolios/{portfolio}', [PortfolioController::class, 'destroy']);

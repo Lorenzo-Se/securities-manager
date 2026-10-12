@@ -82,6 +82,68 @@ it('does not cache failed historical lookups', function () {
         ->and($client->getHistoricalPrice('bitcoin', $date))->toBe(50000.0);
 });
 
+it('fetches market chart prices', function () {
+    Http::fake([
+        'api.coingecko.com/api/v3/coins/*/market_chart*' => Http::response([
+            'prices' => [
+                [1_700_000_000_000, 42000.0],
+                [1_700_086_400_000, 43000.0],
+            ],
+        ]),
+    ]);
+
+    $client = new CoinGeckoClient;
+    $chart = $client->getMarketChart('bitcoin', 30, 'eur');
+
+    expect($chart)->toBe([
+        ['timestamp' => 1_700_000_000_000, 'price' => 42000.0],
+        ['timestamp' => 1_700_086_400_000, 'price' => 43000.0],
+    ]);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/market_chart')
+        && $request['vs_currency'] === 'eur'
+        && $request['days'] === '30'
+        && ! isset($request['interval']));
+});
+
+it('requests daily interval for long market chart ranges', function () {
+    Http::fake([
+        'api.coingecko.com/api/v3/coins/*/market_chart*' => Http::response([
+            'prices' => [
+                [1_700_000_000_000, 42000.0],
+            ],
+        ]),
+    ]);
+
+    $client = new CoinGeckoClient;
+    $client->getMarketChart('bitcoin', 365, 'usd');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/market_chart')
+        && $request['days'] === '365'
+        && $request['interval'] === 'daily');
+});
+
+it('serves stale market chart when coingecko is rate limited', function () {
+    $client = new CoinGeckoClient;
+    $cacheKey = 'coingecko.market_chart.'.md5('bitcoin.30.eur');
+    $staleKey = $cacheKey.'.stale';
+    $staleChart = [
+        ['timestamp' => 1_700_000_000_000, 'price' => 42000.0],
+    ];
+
+    Cache::put($staleKey, $staleChart, 3600);
+
+    Http::fake([
+        'api.coingecko.com/api/v3/coins/*/market_chart*' => Http::response([
+            'status' => ['error_code' => 429],
+        ], 429),
+    ]);
+
+    $chart = $client->getMarketChart('bitcoin', 30, 'eur');
+
+    expect($chart)->toBe($staleChart);
+});
+
 it('serves stale prices when coingecko is rate limited', function () {
     $client = new CoinGeckoClient;
     $cacheKey = 'coingecko.prices.'.md5('bitcoin.usd');

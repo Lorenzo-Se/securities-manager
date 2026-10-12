@@ -28,6 +28,8 @@ return [
             'markets_ttl' => (int) env('COINGECKO_MARKETS_CACHE_TTL', 900),
             'search_ttl' => (int) env('COINGECKO_SEARCH_CACHE_TTL', 300),
             'prices_ttl' => (int) env('COINGECKO_PRICES_CACHE_TTL', 300),
+            'market_chart_ttl' => (int) env('COINGECKO_MARKET_CHART_CACHE_TTL', 300),
+            'market_chart_long_ttl' => (int) env('COINGECKO_MARKET_CHART_LONG_CACHE_TTL', 3600),
             'coin_detail_ttl' => (int) env('COINGECKO_COIN_DETAIL_CACHE_TTL', 86400),
             'stale_ttl' => (int) env('COINGECKO_STALE_CACHE_TTL', 604800),
         ],

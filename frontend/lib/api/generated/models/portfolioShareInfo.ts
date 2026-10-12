@@ -16,4 +16,6 @@ export interface PortfolioShareInfo {
   show_total_balance: boolean;
   /** @nullable */
   my_share_amount?: string | null;
+  /** @nullable */
+  my_share_cost_basis_usd?: string | null;
 }

@@ -80,6 +80,11 @@ function PortfolioCard({
   const effectiveBalance = getEffectiveBalance(portfolio);
   const effectiveCostBasis = getEffectiveCostBasisUsd(portfolio);
 
+  const hasShareAmount =
+    portfolio.share?.my_share_amount !== null &&
+    portfolio.share?.my_share_amount !== undefined;
+  const showShareOnly = hasShareAmount && !showTotal;
+
   const performance =
     effectiveBalance !== null
       ? calculatePortfolioPerformance({
@@ -90,12 +95,31 @@ function PortfolioCard({
         })
       : null;
 
+  const totalPerformance =
+    showTotal && portfolio.balance !== null && portfolio.balance !== undefined
+      ? calculatePortfolioPerformance({
+          balance: Number(portfolio.balance),
+          costBasisUsd:
+            portfolio.cost_basis_usd !== null
+              ? Number(portfolio.cost_basis_usd)
+              : null,
+          priceUser,
+          priceUsd,
+        })
+      : null;
+
   const shareValue =
     effectiveBalance !== null
       ? calculateShareValue(effectiveBalance, priceUser)
       : null;
 
-  const displayValue = shareValue ?? performance?.portfolioValue ?? null;
+  const valuePerformance = showShareOnly
+    ? performance
+    : (totalPerformance ?? performance);
+
+  const displayValue = showShareOnly
+    ? shareValue
+    : (totalPerformance?.portfolioValue ?? performance?.portfolioValue ?? null);
 
   const handleDelete = () => {
     setIsDeleting(true);
@@ -189,17 +213,17 @@ function PortfolioCard({
         </div>
         <div>
           <p className="text-sm text-muted-foreground">Erfolg</p>
-          {performance !== null ? (
+          {valuePerformance !== null ? (
             <div className="space-y-1">
               <p
-                className={`text-2xl font-semibold tracking-tight ${getProfitToneClass(performance.profitAmount)}`}
+                className={`text-2xl font-semibold tracking-tight ${getProfitToneClass(valuePerformance.profitAmount)}`}
               >
-                {formatProfitPercent(performance.profitPercent)}
+                {formatProfitPercent(valuePerformance.profitPercent)}
               </p>
               <p
-                className={`text-sm font-medium ${getProfitToneClass(performance.profitAmount)}`}
+                className={`text-sm font-medium ${getProfitToneClass(valuePerformance.profitAmount)}`}
               >
-                {formatPrice(performance.profitAmount)}
+                {formatPrice(valuePerformance.profitAmount)}
               </p>
             </div>
           ) : (

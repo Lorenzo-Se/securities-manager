@@ -6,9 +6,11 @@ import type {
   Portfolio,
   PortfolioMovement,
   PortfolioShare,
+  PortfolioValueHistory,
 } from "@/lib/api/generated/models";
 import {
   getPortfolio,
+  getPortfolioValueHistory,
   listPortfolioMovements,
   listPortfolioShares,
 } from "@/lib/api/generated/portfolio/portfolio";
@@ -48,6 +50,18 @@ export default async function PortfolioDetailPage({
       : Promise.resolve([] as PortfolioShare[]),
   ]);
 
+  const valueHistory = await getPortfolioValueHistory(portfolioId, { days: 30 })
+    .then((response) =>
+      response.status === 200
+        ? response.data
+        : { currency: user.currency, days: 30, points: [] },
+    )
+    .catch(() => ({
+      currency: user.currency,
+      days: 30,
+      points: [],
+    }));
+
   return (
     <PortfolioDetailContent
       portfolioId={portfolioId}
@@ -56,6 +70,7 @@ export default async function PortfolioDetailPage({
       movements={movements}
       prices={prices}
       shares={shares}
+      valueHistory={valueHistory}
     />
   );
 }

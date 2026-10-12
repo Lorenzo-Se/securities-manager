@@ -6,12 +6,15 @@ import { actionError, actionSuccess } from "@/lib/actions/errors";
 import type { ActionResult } from "@/lib/actions/types";
 import type {
   CreatePortfolioBody,
+  GetPortfolioValueHistoryDays,
   Portfolio,
+  PortfolioValueHistory,
   UpdatePortfolioBody,
 } from "@/lib/api/generated/models";
 import {
   createPortfolio,
   deletePortfolio,
+  getPortfolioValueHistory,
   syncPortfolio,
   updatePortfolio,
 } from "@/lib/api/generated/portfolio/portfolio";
@@ -70,6 +73,31 @@ export async function syncPortfolioAction(
     return actionSuccess(response.data);
   } catch (error) {
     return actionError(error, "Synchronisation konnte nicht gestartet werden.");
+  }
+}
+
+export async function getPortfolioValueHistoryAction(
+  portfolioId: number,
+  days: (typeof GetPortfolioValueHistoryDays)[keyof typeof GetPortfolioValueHistoryDays],
+): Promise<ActionResult<PortfolioValueHistory>> {
+  try {
+    const response = await getPortfolioValueHistory(portfolioId, { days });
+
+    if (response.status !== 200) {
+      const message =
+        response.status === 503
+          ? "Marktdaten sind derzeit nicht verfügbar. Bitte versuche es später erneut."
+          : "Wertverlauf konnte nicht geladen werden.";
+
+      return actionError(null, message);
+    }
+
+    return actionSuccess(response.data);
+  } catch {
+    return actionError(
+      null,
+      "Marktdaten sind derzeit nicht verfügbar. Bitte versuche es später erneut.",
+    );
   }
 }
 

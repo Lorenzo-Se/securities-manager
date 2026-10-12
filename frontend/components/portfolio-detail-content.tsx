@@ -14,6 +14,7 @@ import {
 import { syncPortfolioAction } from "@/lib/actions/portfolio";
 import { PortfolioEditDialog } from "@/components/portfolio-edit-dialog";
 import { PortfolioShareDialog } from "@/components/portfolio-share-dialog";
+import { PortfolioValueChart } from "@/components/portfolio-value-chart";
 import { AuthButton } from "@/components/auth-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ import type {
   PortfolioMovement,
   PortfolioShare,
   PortfolioSyncStatus,
+  PortfolioValueHistory,
 } from "@/lib/api/generated/models";
 import { createPriceFormatter } from "@/lib/format-price";
 import {
@@ -129,6 +131,7 @@ type PortfolioDetailContentProps = {
   movements: PortfolioMovement[];
   prices: CryptoPrices;
   shares: PortfolioShare[];
+  valueHistory: PortfolioValueHistory;
 };
 
 export function PortfolioDetailContent({
@@ -138,6 +141,7 @@ export function PortfolioDetailContent({
   movements,
   prices,
   shares,
+  valueHistory,
 }: PortfolioDetailContentProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -179,6 +183,8 @@ export function PortfolioDetailContent({
       ? calculateShareValue(effectiveBalance, priceUser)
       : null;
 
+  const showShareOnly = hasShareAmount && !showTotal;
+
   const totalPerformance = useMemo(() => {
     if (!showTotal || portfolio.balance === null || portfolio.balance === undefined) {
       return null;
@@ -194,6 +200,14 @@ export function PortfolioDetailContent({
       priceUsd,
     });
   }, [portfolio, priceUser, priceUsd, showTotal]);
+
+  const valuePerformance = showShareOnly
+    ? performance
+    : (totalPerformance ?? performance);
+
+  const displayValue = showShareOnly
+    ? shareValue
+    : (totalPerformance?.portfolioValue ?? performance?.portfolioValue ?? null);
 
   const handleSync = () => {
     startSyncTransition(async () => {
@@ -298,6 +312,12 @@ export function PortfolioDetailContent({
           ) : null}
         </div>
 
+        <PortfolioValueChart
+          portfolioId={portfolioId}
+          initialData={valueHistory}
+          formatPrice={formatPrice}
+        />
+
         <div
           className={`mb-8 grid gap-4 md:grid-cols-2 ${
             hasShareAmount && showTotal
@@ -354,11 +374,7 @@ export function PortfolioDetailContent({
                 {hasShareAmount && !showTotal ? "Wert deines Anteils" : "Portfoliowert"}
               </CardDescription>
               <CardTitle className="text-2xl">
-                {shareValue !== null
-                  ? formatPrice(shareValue)
-                  : performance !== null
-                    ? formatPrice(performance.portfolioValue)
-                    : "—"}
+                {displayValue !== null ? formatPrice(displayValue) : "—"}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -367,15 +383,17 @@ export function PortfolioDetailContent({
             <CardHeader>
               <CardDescription>Erfolg</CardDescription>
               <CardTitle className="text-2xl">
-                {performance !== null ? (
+                {valuePerformance !== null ? (
                   <div className="space-y-1">
-                    <p className={getProfitToneClass(performance.profitAmount)}>
-                      {formatProfitPercent(performance.profitPercent)}
+                    <p
+                      className={getProfitToneClass(valuePerformance.profitAmount)}
+                    >
+                      {formatProfitPercent(valuePerformance.profitPercent)}
                     </p>
                     <p
-                      className={`text-base font-medium ${getProfitToneClass(performance.profitAmount)}`}
+                      className={`text-base font-medium ${getProfitToneClass(valuePerformance.profitAmount)}`}
                     >
-                      {formatPrice(performance.profitAmount)}
+                      {formatPrice(valuePerformance.profitAmount)}
                     </p>
                   </div>
                 ) : (

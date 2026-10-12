@@ -361,6 +361,79 @@
                 ]
             }
         },
+        "/portfolios/{portfolio}/value-history": {
+            "get": {
+                "tags": [
+                    "Portfolio"
+                ],
+                "summary": "Wertverlauf eines Portfolios abrufen",
+                "operationId": "getPortfolioValueHistory",
+                "parameters": [
+                    {
+                        "name": "portfolio",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "days",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "enum": [
+                                        7,
+                                        30,
+                                        90,
+                                        365
+                                    ]
+                                },
+                                {
+                                    "type": "string",
+                                    "enum": [
+                                        "max"
+                                    ]
+                                }
+                            ],
+                            "default": 30
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Wertverlauf",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PortfolioValueHistory"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Nicht authentifiziert"
+                    },
+                    "404": {
+                        "description": "Portfolio nicht gefunden"
+                    },
+                    "422": {
+                        "description": "Validierungsfehler"
+                    },
+                    "503": {
+                        "description": "Marktdaten nicht verfügbar"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/portfolios/{portfolio}/sync": {
             "post": {
                 "tags": [
@@ -1317,6 +1390,68 @@
                             "xpub",
                             "address"
                         ]
+                    }
+                },
+                "type": "object"
+            },
+            "PortfolioValueHistoryPoint": {
+                "required": [
+                    "date",
+                    "value",
+                    "profit_amount",
+                    "profit_percent"
+                ],
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-01-15T00:00:00+00:00"
+                    },
+                    "value": {
+                        "type": "string",
+                        "example": "12345.67"
+                    },
+                    "profit_amount": {
+                        "type": "string",
+                        "example": "2345.67",
+                        "nullable": true
+                    },
+                    "profit_percent": {
+                        "type": "string",
+                        "example": "23.45",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "PortfolioValueHistory": {
+                "required": [
+                    "currency",
+                    "days",
+                    "points"
+                ],
+                "properties": {
+                    "currency": {
+                        "type": "string",
+                        "example": "eur"
+                    },
+                    "days": {
+                        "oneOf": [
+                            {
+                                "type": "integer",
+                                "example": 30
+                            },
+                            {
+                                "type": "string",
+                                "example": "max"
+                            }
+                        ]
+                    },
+                    "points": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PortfolioValueHistoryPoint"
+                        }
                     }
                 },
                 "type": "object"

@@ -10,6 +10,18 @@ class PortfolioCostBasisCalculator
     /**
      * @param  Collection<int, PortfolioMovement>  $movements
      */
+    public function costBasisAtTimestamp(Collection $movements, int $timestamp): ?string
+    {
+        $relevant = $movements->filter(
+            static fn (PortfolioMovement $movement): bool => ($movement->occurred_at?->getTimestamp() ?? 0) <= $timestamp,
+        );
+
+        return $this->calculate($relevant);
+    }
+
+    /**
+     * @param  Collection<int, PortfolioMovement>  $movements
+     */
     public function calculate(Collection $movements): ?string
     {
         if ($movements->isEmpty()) {

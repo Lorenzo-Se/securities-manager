@@ -129,6 +129,58 @@ class CoinGeckoClient
         });
     }
 
+    /**
+     * @return list<array{timestamp: int, price: float}>
+     */
+    public function getMarketChart(
+        string $id,
+        int $days,
+        string $vsCurrency = 'usd',
+    ): array {
+        $vsCurrency = strtolower($vsCurrency);
+        $daysParam = (string) $days;
+        $cacheKey = 'coingecko.market_chart.'.md5($id.'.'.$daysParam.'.'.$vsCurrency);
+        $ttl = $this->marketChartCacheTtl($days);
+
+        return $this->rememberWithStaleFallback($cacheKey, $ttl, function () use ($id, $days, $daysParam, $vsCurrency): array {
+            $query = [
+                'vs_currency' => $vsCurrency,
+                'days' => $daysParam,
+            ];
+
+            if ($days > 90) {
+                $query['interval'] = 'daily';
+            }
+
+            $response = $this->request()->get("/coins/{$id}/market_chart", $query);
+
+            if ($response->status() === 429) {
+                throw new RuntimeException('CoinGecko Rate-Limit erreicht (429).');
+            }
+
+            if (! $response->successful()) {
+                throw new RuntimeException(
+                    'CoinGecko-Marktchart nicht verfügbar (HTTP '.$response->status().').',
+                );
+            }
+
+            /** @var list<array{0: int|float, 1: float|int}>|null $prices */
+            $prices = $response->json('prices');
+
+            if (! is_array($prices)) {
+                throw new RuntimeException('Marktchart-Preise fehlen in der CoinGecko-Antwort.');
+            }
+
+            return array_values(array_map(
+                static fn (array $point): array => [
+                    'timestamp' => (int) $point[0],
+                    'price' => (float) $point[1],
+                ],
+                $prices,
+            ));
+        });
+    }
+
     public function getHistoricalPrice(
         string $id,
         DateTimeInterface $date,
@@ -391,6 +443,15 @@ class CoinGeckoClient
 
             throw $exception;
         }
+    }
+
+    private function marketChartCacheTtl(int $days): int
+    {
+        if ($days > 90) {
+            return (int) config('crypto.coingecko.cache.market_chart_long_ttl');
+        }
+
+        return (int) config('crypto.coingecko.cache.market_chart_ttl');
     }
 
     private function request(): PendingRequest
