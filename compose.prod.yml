@@ -3,7 +3,8 @@
 #
 # Every value comes from .env next to this file (written by Ansible). TLS ends
 # at the edge proxy: the frontend is published on 80, Keycloak on 8080 (own
-# public hostname, the browser is redirected there to log in). The API is not
+# public hostname, the browser is redirected there to log in; its admin
+# console only on KEYCLOAK_ADMIN_URL, internal). The API is not
 # published; only the frontend server talks to it. PostgreSQL is external.
 
 # Built once by the backend service; queue and scheduler run the same image
@@ -92,9 +93,13 @@ services:
       KC_DB_USERNAME: ${KEYCLOAK_DB_USERNAME:?}
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?}
       KC_HOSTNAME: ${KEYCLOAK_URL:?}
+      # Admin console on an internal address; the public host does not serve
+      # /admin. The master realm's Frontend URL must point there as well.
+      KC_HOSTNAME_ADMIN: ${KEYCLOAK_ADMIN_URL:?}
       KC_PROXY_HEADERS: xforwarded
-      # Only used to create the master admin on the first start.
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      # Temporary master admin, only created on the first start. Replace it
+      # with a permanent admin and delete it.
+      KC_BOOTSTRAP_ADMIN_USERNAME: temp-admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?}
       # Placeholders in realm-securities-manager.prod.json.
       APP_URL: ${APP_URL:?}

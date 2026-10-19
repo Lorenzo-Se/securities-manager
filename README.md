@@ -119,7 +119,7 @@ Läuft auf `https://securities.seminara.ch` (Keycloak: `https://securities-auth.
 docker compose -f compose.prod.yml up -d --build
 ```
 
-Keycloak importiert beim ersten Start [`keycloak/realm-securities-manager.prod.json`](keycloak/realm-securities-manager.prod.json) (ohne Benutzer, Client-Secret und Redirect-URIs aus der Umgebung). Danach Änderungen nur noch in der Admin-Konsole. Neue Releases: nach Push auf `main` den **configure**-Job für `lse-securities-manager` in pve-iac starten.
+Keycloak importiert beim ersten Start [`keycloak/realm-securities-manager.prod.json`](keycloak/realm-securities-manager.prod.json) (ohne Benutzer, Client-Secret und Redirect-URIs aus der Umgebung). Danach Änderungen nur noch in der Admin-Konsole. Die läuft nur unter der internen Adresse `KEYCLOAK_ADMIN_URL` (öffentlich sind `/admin` und `/realms/master` gesperrt); beim ersten Start wird der temporäre Admin `temp-admin` angelegt, der durch einen permanenten Admin ersetzt wird. Neue Releases: nach Push auf `main` den **configure**-Job für `lse-securities-manager` in pve-iac starten.
 
 ## Projektstruktur
 
