@@ -14,7 +14,7 @@ Monorepo für die Full-Stack-Anwendung zur Verwaltung von Wertpapier-Portfolios:
 ## Voraussetzungen
 
 - Docker & Docker Compose
-- PHP 8.3+ und Composer
+- PHP 8.4+ und Composer
 - Node.js 20+ und npm
 
 ## Schnellstart
@@ -111,10 +111,21 @@ AUTH_TRUST_HOST=true
 
 Frontend: http://localhost:3000
 
+## Produktion
+
+Läuft auf `https://securities.seminara.ch` (Keycloak: `https://securities-auth.seminara.ch`), deployt von `infrastructure/pve-iac` (Stack `lse-securities-manager`, Doku `docs/lse-securities-manager.md`). Der Stack ist [`compose.prod.yml`](compose.prod.yml): Frontend (Port 80), Laravel-API mit Queue-Worker und Scheduler (nur intern), Keycloak (Port 8080). PostgreSQL ist extern; alle Werte kommen aus der `.env` neben der Compose-Datei, die Ansible schreibt.
+
+```bash
+docker compose -f compose.prod.yml up -d --build
+```
+
+Keycloak importiert beim ersten Start [`keycloak/realm-securities-manager.prod.json`](keycloak/realm-securities-manager.prod.json) (ohne Benutzer, Client-Secret und Redirect-URIs aus der Umgebung). Danach Änderungen nur noch in der Admin-Konsole. Neue Releases: nach Push auf `main` den **configure**-Job für `lse-securities-manager` in pve-iac starten.
+
 ## Projektstruktur
 
 ```
-├── docker-compose.yml      # PostgreSQL + Keycloak
+├── docker-compose.yml      # Lokal: PostgreSQL + Keycloak
+├── compose.prod.yml        # Produktion (pve-iac)
 ├── docker/postgres/init/   # Init-Skript für securities_manager DB
 ├── keycloak/               # Realm-Import
 ├── backend/                # Laravel API (Portfolios, Krypto-Preise, Auth)

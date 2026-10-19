@@ -32,7 +32,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./keycloak:/opt/keycloak/data/import
+      - ./keycloak/realm-securities-manager.json:/opt/keycloak/data/import/realm-securities-manager.json:ro
     depends_on:
       postgres:
         condition: service_healthy

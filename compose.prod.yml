@@ -1,0 +1,100 @@
+# Production stack, deployed by pve-iac (stacks/lse-securities-manager, role
+# compose_app): docker compose -f compose.prod.yml up -d --build
+#
+# Every value comes from .env next to this file (written by Ansible). TLS ends
+# at the edge proxy: the frontend is published on 80, Keycloak on 8080 (own
+# public hostname, the browser is redirected there to log in). The API is not
+# published; only the frontend server talks to it. PostgreSQL is external.
+
+x-backend: &backend
+  build: ./backend
+  image: securities-manager-backend
+  restart: unless-stopped
+  environment: &backend-env
+    APP_NAME: Securities Manager
+    APP_ENV: production
+    APP_DEBUG: "false"
+    APP_KEY: ${APP_KEY:?}
+    APP_URL: ${APP_URL:?}
+    FRONTEND_URL: ${APP_URL:?}
+    LOG_CHANNEL: stderr
+    LOG_LEVEL: info
+    DB_CONNECTION: pgsql
+    DB_HOST: ${DB_HOST:?}
+    DB_PORT: ${DB_PORT:-5432}
+    DB_DATABASE: ${DB_DATABASE:?}
+    DB_USERNAME: ${DB_USERNAME:?}
+    DB_PASSWORD: ${DB_PASSWORD:?}
+    DB_SSLMODE: ${DB_SSLMODE:-prefer}
+    # Tokens carry the public issuer; the keys are fetched inside the stack.
+    KEYCLOAK_ISSUER: ${KEYCLOAK_URL:?}/realms/securities-manager
+    KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/securities-manager/protocol/openid-connect/certs
+    L5_SWAGGER_GENERATE_ALWAYS: "false"
+    COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
+    ETHERSCAN_API_KEY: ${ETHERSCAN_API_KEY:-}
+    BSCSCAN_API_KEY: ${BSCSCAN_API_KEY:-}
+    TRONGRID_API_KEY: ${TRONGRID_API_KEY:-}
+    HELIUS_API_KEY: ${HELIUS_API_KEY:-}
+    BLOCKFROST_API_KEY: ${BLOCKFROST_API_KEY:-}
+
+# Queue worker and scheduler: same image, no HTTP, started after the API has
+# run the migrations.
+x-backend-worker: &backend-worker
+  <<: *backend
+  healthcheck:
+    disable: true
+  depends_on:
+    backend:
+      condition: service_healthy
+
+services:
+  backend:
+    <<: *backend
+    environment:
+      <<: *backend-env
+      RUN_MIGRATIONS: "true"
+
+  queue:
+    <<: *backend-worker
+    command: ["php", "artisan", "queue:work", "--tries=3", "--max-time=3600"]
+
+  scheduler:
+    <<: *backend-worker
+    command: ["php", "artisan", "schedule:work"]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    environment:
+      API_URL: http://backend:8080/api
+      AUTH_URL: ${APP_URL:?}
+      AUTH_SECRET: ${AUTH_SECRET:?}
+      AUTH_TRUST_HOST: "true"
+      AUTH_KEYCLOAK_ID: frontend
+      AUTH_KEYCLOAK_SECRET: ${KEYCLOAK_CLIENT_SECRET:?}
+      AUTH_KEYCLOAK_ISSUER: ${KEYCLOAK_URL:?}/realms/securities-manager
+    ports:
+      - "80:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  keycloak:
+    build: ./keycloak
+    restart: unless-stopped
+    environment:
+      KC_DB_URL: jdbc:postgresql://${DB_HOST:?}:${DB_PORT:-5432}/${KEYCLOAK_DB_DATABASE:?}?sslmode=${DB_SSLMODE:-prefer}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USERNAME:?}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?}
+      KC_HOSTNAME: ${KEYCLOAK_URL:?}
+      KC_PROXY_HEADERS: xforwarded
+      # Only used to create the master admin on the first start.
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?}
+      # Placeholders in realm-securities-manager.prod.json.
+      APP_URL: ${APP_URL:?}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?}
+    ports:
+      - "8080:8080"

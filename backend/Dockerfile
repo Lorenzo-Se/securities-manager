@@ -8,36 +8,47 @@ WORKDIR /app
 
 COPY composer.json composer.lock ./
 
+# The composer image lacks ext-gmp; the runtime stage below installs it.
 RUN composer install \
     --no-dev \
     --no-interaction \
     --no-scripts \
     --no-autoloader \
-    --prefer-dist
+    --prefer-dist \
+    --ignore-platform-req=ext-gmp
 
 COPY . .
 
 RUN composer install \
     --no-dev \
     --no-interaction \
-    --optimize-autoloader
+    --optimize-autoloader \
+    --ignore-platform-req=ext-gmp
 
-FROM php:8.3-fpm-alpine AS runtime
+FROM php:8.4-fpm-alpine AS runtime
 
+# Runtime libraries stay; only the -dev packages are removed after the build.
 RUN apk add --no-cache \
         nginx \
         supervisor \
         wget \
+        libpq \
+        icu-libs \
+        oniguruma \
+        gmp \
+    && apk add --no-cache --virtual .build-deps \
         libpq-dev \
         icu-dev \
         oniguruma-dev \
+        gmp-dev \
     && docker-php-ext-configure intl \
     && docker-php-ext-install \
+        gmp \
         intl \
         mbstring \
         opcache \
         pdo_pgsql \
-    && apk del --no-cache libpq-dev icu-dev oniguruma-dev \
+    && apk del --no-cache .build-deps \
     && rm -rf /var/cache/apk/*
 
 COPY docker/php.ini /usr/local/etc/php/conf.d/99-production.ini
