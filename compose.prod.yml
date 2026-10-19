@@ -6,8 +6,9 @@
 # public hostname, the browser is redirected there to log in). The API is not
 # published; only the frontend server talks to it. PostgreSQL is external.
 
+# Built once by the backend service; queue and scheduler run the same image
+# (building it per service would triple the build, too much for the CT).
 x-backend: &backend
-  build: ./backend
   image: securities-manager-backend
   restart: unless-stopped
   environment: &backend-env
@@ -41,6 +42,7 @@ x-backend: &backend
 # run the migrations.
 x-backend-worker: &backend-worker
   <<: *backend
+  pull_policy: never
   healthcheck:
     disable: true
   depends_on:
@@ -50,6 +52,7 @@ x-backend-worker: &backend-worker
 services:
   backend:
     <<: *backend
+    build: ./backend
     environment:
       <<: *backend-env
       RUN_MIGRATIONS: "true"
